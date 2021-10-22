@@ -31,3 +31,17 @@ If you want to enable TLS, ensure that all paths to the certificate files are co
 
 The json-config file in the dist-directory should be self-explaining and the default configuration should work
 with a normal RocketChat-installation on the same server.
+
+# Installation
+
+Just download the tar-file, unpack it and start the bash-script:
+
+```bash
+./rocketgateway.sh -c rocketgateway.json
+```
+
+# Compilation
+
+```bash
+gradle clean jar assembleDist
+```
