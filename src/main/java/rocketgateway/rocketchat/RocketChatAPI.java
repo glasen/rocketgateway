@@ -301,14 +301,16 @@ public class RocketChatAPI {
                         String username = ((JSONObject) user).getString("username");
                         String id = ((JSONObject) user).getString("_id");
                         channelMap.put(username, id);
-
-                        JSONArray emails = ((JSONObject) user).getJSONArray("emails");
-                        for (Object email : emails) {
-                            if (email instanceof JSONObject) {
-                                String address = ((JSONObject) email).getString("address");
-                                eMailUserMap.put(address, username);
+                        
+                        try {
+                            JSONArray emails = ((JSONObject) user).getJSONArray("emails");
+                            for (Object email : emails) {
+                                if (email instanceof JSONObject) {
+                                    String address = ((JSONObject) email).getString("address");
+                                    eMailUserMap.put(address, username);
+                                }
                             }
-                        }
+                        } catch (JsonException ignored) {}
                     }
                 }
             }
