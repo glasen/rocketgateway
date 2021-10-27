@@ -310,7 +310,7 @@ public class RocketChatAPI {
                                     eMailUserMap.put(address, username);
                                 }
                             }
-                        } catch (JsonException ignored) {}
+                        } catch (JSONException ignored) {}
                     }
                 }
             }
