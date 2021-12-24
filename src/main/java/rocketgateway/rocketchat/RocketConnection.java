@@ -87,7 +87,7 @@ public class RocketConnection {
      * Get status of connection.
      * @return boolean True when return code is 200. Otherwise false
      */
-    public boolean getStatus() throws IOException {
+    public boolean getStatus() {
         try {
             return this.con.getResponseCode() == 200;
         } catch (IOException ignored) {
