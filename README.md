@@ -1,8 +1,8 @@
 # RocketGateway
 
-I had originally developed this program for internal use in my company. Since we setup or internal network with no
-internet access, I needed an easy way to receive status emails from servers e.g. TrueNAS. Since I didn't want to maintain an
-email server only for status messages, it was obvious to use our internal RocketChat server to receive the emails.
+I had originally developed this program for internal use in my company. Since we setup our internal network with no
+internet access, i needed an easy way to receive status emails from servers e.g. TrueNAS. Since I didn't want to maintain an
+email server only for status messages, it was obvious to use our internal RocketChat server to receive these emails.
 
 Unfortunately there was no software available that allowed to send an email directly to RocketChat. All programs on the
 market use a normal email server as an intermediate step.
