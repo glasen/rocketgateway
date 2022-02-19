@@ -1,5 +1,6 @@
 package rocketgateway.config.objects;
 
+@SuppressWarnings("ALL")
 public class SMTP {
     private int smtpPort;
     private boolean requireAuth;

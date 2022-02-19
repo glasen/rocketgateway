@@ -1,5 +1,6 @@
 package rocketgateway.config.objects;
 
+@SuppressWarnings("ALL")
 public class Spam {
     private boolean getSpam;
     private String spamChannel;

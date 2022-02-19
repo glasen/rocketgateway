@@ -44,7 +44,7 @@ import java.util.Map;
  *
  * @since 1.3
  */
-@SuppressWarnings("UnusedReturnValue")
+@SuppressWarnings({"UnusedReturnValue", "ALL"})
 public class MimeMessageParser
 {
     /** The MimeMessage to convert */

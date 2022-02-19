@@ -1,5 +1,6 @@
 package rocketgateway.config.objects;
 
+@SuppressWarnings("ALL")
 public class Rocketchat {
     private String rocketchatUrl;
     private String botUsername;

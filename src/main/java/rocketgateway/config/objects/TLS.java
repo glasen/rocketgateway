@@ -1,5 +1,6 @@
 package rocketgateway.config.objects;
 
+@SuppressWarnings("ALL")
 public class TLS {
     private boolean enableTls;
     private String[] tlsVersions;

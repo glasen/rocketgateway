@@ -1,14 +1,14 @@
 # RocketGateway
 
-I had originally developed this program for internal use in my company. Since we setup our internal network with no
-internet access, i needed an easy way to receive status emails from servers e.g. TrueNAS. Since I didn't want to maintain an
+I had originally developed this program for internal use in my company. Since we set up our internal network with no
+internet access, I needed an easy way to receive status emails from servers e.g. TrueNAS. Since I didn't want to maintain an
 email server only for status messages, it was obvious to use our internal RocketChat server to receive these emails.
 
 Unfortunately there was no software available that allowed to send an email directly to RocketChat. All programs on the
 market use a normal email server as an intermediate step.
 
 For this reason I developed this small program which provides a SMTP-to-RocketChat-gateway. You can simply send an e-mail
-to a specific user (The e-mail address must provided for each user account) and he will get a message directly in 
+to a specific user (The e-mail address must be provided for each user account) and he will get a message directly in 
 RocketChat. Attachments in the email are converted to file uploads in RocketChat. Since RocketChat, for security 
 reasons, does not support HTML-rendering, HTML-emails are converted to plain-text messages. The original messages
 are additionally sent as file uploads.
@@ -19,7 +19,7 @@ The program needs an installation of RocketChat-server and at least Java 11 and 
 
 In RocketChat you __must__ create a user which is in the "_bot_"-group e.g. "_email-bot_" which is then used 
 by RocketGateway to send messages. You also __must__ add the permission "_View Full Other User Info_" to the 
-bot-group. Otherwise RocketGateway cannot map the e-mail-address to the internal user id of RocketChat.
+bot-group, otherwise RocketGateway cannot map the e-mail-address to the internal user id of RocketChat.
 
 For security reasons you should generate a new permissions-group and clone every permission from the original
 "_bot_"-group and then add "_View Full Other User Info_" to this group. The credentials of the newly generated 

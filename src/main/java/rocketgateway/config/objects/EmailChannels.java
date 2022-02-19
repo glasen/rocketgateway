@@ -1,5 +1,6 @@
 package rocketgateway.config.objects;
 
+@SuppressWarnings("ALL")
 public class EmailChannels {
     private String address;
     private String channel;

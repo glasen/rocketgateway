@@ -2,6 +2,7 @@ package rocketgateway.config.objects;
 
 import java.util.List;
 
+@SuppressWarnings("ALL")
 public class RocketGatewayConfig {
     private SMTP smtp;
     private Rocketchat rocketchat;
