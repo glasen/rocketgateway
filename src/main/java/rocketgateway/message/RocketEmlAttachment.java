@@ -32,7 +32,11 @@ public class RocketEmlAttachment {
 
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
 
-        String headerTemplate = "Content-Disposition: form-data; name=\"file\"; filename=\"%s\"\r\n" + "Content-Type: %s\r\n\r\n";
+        String headerTemplate = """
+                Content-Disposition: form-data; name="file"; filename="%s"\r
+                Content-Type: %s\r
+                \r
+                """;
         stream.write(boundaryBytes);
         String header = String.format(headerTemplate, filename, mimeType);
         byte[] headerBytes = header.getBytes();

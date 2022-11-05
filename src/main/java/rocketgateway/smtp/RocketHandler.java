@@ -37,7 +37,7 @@ public class RocketHandler implements MessageHandler {
         List<RocketEmlAttachment> attachments = rocketMessage.getAttachments();
 
         for (RocketEmlAddress recipient : rocketMessage.getRecipients()) {
-            String address = recipient.getAddress();
+            String address = recipient.address();
             String alias = rocketMessage.getSender();
 
             boolean status = this.bot.sendMessageToEmailAddress(message, address, alias);

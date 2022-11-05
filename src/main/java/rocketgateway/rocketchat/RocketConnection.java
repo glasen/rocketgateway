@@ -34,13 +34,11 @@ public class RocketConnection {
         this.con = (HttpURLConnection) url.openConnection();
 
         switch (requestType) {
-            case BINARY:
-                this.con.setRequestProperty("Content-Type", "multipart/form-data; boundary=envelope-0815");
-                break;
-            case JSON:
-            default:
+            case BINARY -> this.con.setRequestProperty("Content-Type", "multipart/form-data; boundary=envelope-0815");
+            case JSON -> {
                 con.setRequestProperty("Accept", "application/json");
                 con.setRequestProperty("Content-Type", "application/json");
+            }
         }
 
         this.con.setUseCaches(false);

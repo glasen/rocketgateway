@@ -3,28 +3,25 @@ package rocketgateway.message;
 /**
  * Data class for e-mail addresses.
  */
-public class RocketEmlAddress implements Comparable<RocketEmlAddress> {
-    private final String name;
-    private final String address;
-    
-    public RocketEmlAddress(String name, String address) {
-        this.name = name;
-        this.address = address;
-    }
+public record RocketEmlAddress(String name, String address) implements Comparable<RocketEmlAddress> {
 
     /**
      * Returns stored name
+     *
      * @return String with name
      */
-    public String getName() {
+    @Override
+    public String name() {
         return name;
     }
 
     /**
      * Returns stored e-mail address
+     *
      * @return String with e-mail address
      */
-    public String getAddress() {
+    @Override
+    public String address() {
         return address;
     }
 
