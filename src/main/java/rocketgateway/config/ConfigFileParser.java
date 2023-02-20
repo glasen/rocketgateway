@@ -34,70 +34,70 @@ public class ConfigFileParser {
     }
 
     public int getPort() {
-        return this.config.getSmtp().getSmtpPort();
+        return this.config.smtp().smtpPort();
     }
 
     public String getSmtpUsername() {
-        return this.config.getSmtp().getSmtpUsername();
+        return this.config.smtp().smtpUsername();
     }
 
     public String getSmtpPassword() {
-        return this.config.getSmtp().getSmtpPassword();
+        return this.config.smtp().smtpPassword();
     }
 
     public Boolean getRequireAuth() {
-        return this.config.getSmtp().requireAuth();
+        return this.config.smtp().requireAuth();
     }
 
     public String getRocketChatURL() {
-        return this.config.getRocketchat().getRocketchatUrl();
+        return this.config.rocketchat().rocketchatUrl();
     }
 
     public String getBotUser() {
-        return this.config.getRocketchat().getBotUsername();
+        return this.config.rocketchat().botUsername();
     }
 
     public String getBotPassword() {
-        return this.config.getRocketchat().getBotPassword();
+        return this.config.rocketchat().botPassword();
     }
 
     public boolean getSpam() {
-        return this.config.getSpam().getSpam();
+        return this.config.spam().enableSpamCatching();
     }
 
     public String getSpamChannel() {
-        return this.config.getSpam().getSpamChannel();
+        return this.config.spam().spamChannel();
     }
 
     public boolean enableTLS() {
-        return this.config.getTls().enableTls();
+        return this.config.tls().enableTls();
     }
 
     public String getCertificateChainFile() {
-        return this.config.getTls().getCertificatechainFile();
+        return this.config.tls().certificatechainFile();
     }
 
     public String getPrivateKeyFile() {
-        return this.config.getTls().getPrivatekeyFile();
+        return this.config.tls().privatekeyFile();
     }
 
     public String getPrivateKeyPassword() {
-        return this.config.getTls().getPrivatekeyPassword();
+        return this.config.tls().privatekeyPassword();
     }
 
     public String getTrustedCertificate() {
-        return this.config.getTls().getTrustedcertificateFile();
+        return this.config.tls().trustedcertificateFile();
     }
 
     public String[] getTLSProtocols() {
-        return this.config.getTls().getTlsVersions();
+        return this.config.tls().tlsVersions();
     }
 
     public Map<String, String> getEmailChannels() {
         Map<String, String> emailChannelMap = new HashMap<>();
 
-        for (EmailChannels map : this.config.getEmailChannels()) {
-            emailChannelMap.put(map.getAddress(), map.getChannel());
+        for (EmailChannels map : this.config.emailChannels()) {
+            emailChannelMap.put(map.address(), map.channel());
         }
         return emailChannelMap;
     }

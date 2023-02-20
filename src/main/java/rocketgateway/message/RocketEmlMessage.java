@@ -124,7 +124,7 @@ public class RocketEmlMessage {
 
     /**
      * Get addresses
-     * @return List with RocketEmlAddress
+     * @return Set with RocketEmlAddress
      */
     public Set<RocketEmlAddress> getRecipients() {
         return recipients;

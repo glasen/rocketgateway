@@ -3,30 +3,4 @@ package rocketgateway.config.objects;
 import java.util.List;
 
 @SuppressWarnings("ALL")
-public class RocketGatewayConfig {
-    private SMTP smtp;
-    private Rocketchat rocketchat;
-    private Spam spam;
-    private TLS tls;
-    private List<EmailChannels> emailChannels;
-
-    public SMTP getSmtp() {
-        return smtp;
-    }
-
-    public Rocketchat getRocketchat() {
-        return rocketchat;
-    }
-
-    public Spam getSpam() {
-        return spam;
-    }
-
-    public TLS getTls() {
-        return tls;
-    }
-
-    public List<EmailChannels> getEmailChannels() {
-        return emailChannels;
-    }
-}
+public record RocketGatewayConfig(SMTP smtp, Rocketchat rocketchat, Spam spam, TLS tls, List<EmailChannels> emailChannels) {}
