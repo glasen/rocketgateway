@@ -1,13 +1,13 @@
 package rocketgateway.rocketchat;
 
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class LoginData {
     private static final Pattern emailPattern = Pattern.compile("^(.+)@(.+)$");
-    private final String jsonString;
+    private final JsonObject credentialsJson;
     private String authToken;
     private String userId;
 
@@ -17,20 +17,19 @@ public class LoginData {
      * @param password String Password of the bot-user
      */
     public LoginData(String username, String password) {
-        JSONObject jsonObject = new JSONObject();
+        this.credentialsJson = new JsonObject();
 
         // Check if provided username is an e-mail address. E-mail addresses need a different auth-token format then
         // "normal" usernames.
         Matcher m = emailPattern.matcher(username);
+
         if (m.matches()) {
-            jsonObject.put("user", username);
+            this.credentialsJson.addProperty("user", username);
         } else {
-            jsonObject.put("username", username);
+            this.credentialsJson.addProperty("username", username);
         }
 
-        jsonObject.put("password", password);
-
-        this.jsonString = jsonObject.toString();
+        this.credentialsJson.addProperty("password", password);
     }
 
     /**
@@ -38,7 +37,7 @@ public class LoginData {
      * @return String Json with user-data.
      */
     public String get() {
-        return this.jsonString;
+        return this.credentialsJson.toString();
     }
 
     /**
@@ -56,7 +55,7 @@ public class LoginData {
      * @return String with auth-token from RocketChat
      */
     public String getAuthToken() {
-        return authToken;
+        return this.authToken;
     }
 
     /**
@@ -64,6 +63,6 @@ public class LoginData {
      * @return String Internal RocketChat user-id
      */
     public String getUserId() {
-        return userId;
+        return this.userId;
     }
 }

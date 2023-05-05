@@ -1,8 +1,8 @@
 package rocketgateway.rocketchat;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -20,9 +20,10 @@ public class RocketChatAPI {
 
     /**
      * Rudimentary RocketChat-API class. Contains only methods which are needed to send messages and attachments.
-     * @param username String Username of bot-user
-     * @param password String Password of bot-user
-     * @param serverURL String URL of RocketChat-server
+     *
+     * @param username       String Username of bot-user
+     * @param password       String Password of bot-user
+     * @param serverURL      String URL of RocketChat-server
      * @param emailsChannels Map with e-mail-address to channel mapping. See ini-file for more details.
      */
     public RocketChatAPI(String username, String password, String serverURL, Map<String, String> emailsChannels) {
@@ -45,12 +46,14 @@ public class RocketChatAPI {
         try {
             this.rocketConnection.open(HTTPMethods.GET, "/api/v1/login", RequestType.JSON);
             this.rocketConnection.writeJsonData(this.loginData.get());
-            JSONObject json = this.rocketConnection.getResponseJSON();
+            JsonObject json = this.rocketConnection.getResponseJSON();
             boolean status = this.rocketConnection.getStatus();
 
-            if (status && json.getString("status").equals("success")) {
-                String authToken = json.getJSONObject("data").getString("authToken");
-                String userId = json.getJSONObject("data").getString("userId");
+            if (status && json.get("status").getAsString().equals("success")) {
+                JsonObject data = json.getAsJsonObject("data");
+
+                String authToken = data.get("authToken").getAsString();
+                String userId = data.get("userId").getAsString();
                 this.loginData.setTokens(authToken, userId);
                 this.loginStatus = true;
             }
@@ -72,9 +75,10 @@ public class RocketChatAPI {
 
     /**
      * Send a message to a specific e-mail-address.
+     *
      * @param message String message to send
      * @param address String E-mail-address of the user to send the message.
-     * @param alias String sender alias name.
+     * @param alias   String sender alias name.
      * @return boolean Returns true if the message was successfully sent.
      */
     public boolean sendMessageToEmailAddress(String message, String address, String alias) {
@@ -92,9 +96,10 @@ public class RocketChatAPI {
 
     /**
      * Send a message to a specific channel. Basically all rooms are channels.
-     * @param message String message to send
+     *
+     * @param message     String message to send
      * @param channelName String Name of channel to send the message.
-     * @param alias String sender alias name.
+     * @param alias       String sender alias name.
      * @return boolean Returns true if the message was successfully sent.
      */
     public boolean sendMessageToChannel(String message, String channelName, String alias) {
@@ -105,12 +110,12 @@ public class RocketChatAPI {
             this.rocketConnection.open(HTTPMethods.GET, getApiPath("chat.postMessage"), RequestType.JSON);
             this.rocketConnection.setAuthHeader(this.loginData);
 
-            JSONObject jsonData = new JSONObject();
+            JsonObject jsonData = new JsonObject();
 
-            jsonData.put("text", message);
+            jsonData.addProperty("text", message);
 
             if (!Optional.ofNullable(alias).orElse("").isEmpty()) {
-                jsonData.put("alias", alias);
+                jsonData.addProperty("alias", alias);
             }
 
             /* Get room-id for channel name. All rooms and channels have a unique id. The room-id is the only
@@ -119,17 +124,18 @@ public class RocketChatAPI {
             String roomId = channelMap.get(channelName);
 
             if (roomId != null) {
-                jsonData.put("roomId", roomId);
+                jsonData.addProperty("roomId", roomId);
             }
 
             this.rocketConnection.writeJsonData(jsonData.toString());
-            JSONObject json = this.rocketConnection.getResponseJSON();
+
+            JsonObject json = this.rocketConnection.getResponseJSON();
             boolean status = this.rocketConnection.getStatus();
 
             if (status) {
                 try {
-                    JSONObject messageObj = json.getJSONObject("message");
-                    lastRoomId = messageObj.getString("rid");
+                    JsonObject messageObj = json.getAsJsonObject("message");
+                    lastRoomId = messageObj.get("rid").getAsString();
                 } catch (Exception e) {
                     lastRoomId = "";
                 }
@@ -137,7 +143,7 @@ public class RocketChatAPI {
                 lastRoomId = "";
             }
 
-            if (status && json.getBoolean("success")) {
+            if (status && json.get("success").getAsBoolean()) {
                 sendStatus = true;
             }
 
@@ -151,8 +157,9 @@ public class RocketChatAPI {
 
     /**
      * Upload a file to a specific room/channel
+     *
      * @param outData byte[] Attachment data
-     * @param roomId String Internal id of room to upload data
+     * @param roomId  String Internal id of room to upload data
      */
     public void uploadFileToRoom(byte[] outData, String roomId) {
         try {
@@ -175,16 +182,17 @@ public class RocketChatAPI {
 
     /**
      * Log out RocketChat connection
+     *
      * @throws IOException Thrown when something went wrong when logging out
      */
     public void logout() throws IOException {
         if (this.loginStatus) {
             this.rocketConnection.open(HTTPMethods.POST, "/api/v1/logout", RequestType.JSON);
             this.rocketConnection.setAuthHeader(this.loginData);
-            JSONObject json = this.rocketConnection.getResponseJSON();
+            JsonObject json = this.rocketConnection.getResponseJSON();
             boolean status = this.rocketConnection.getStatus();
 
-            if (status && json.getString("status").equals("success")) {
+            if (status && json.get("status").getAsString().equals("success")) {
                 this.loginData.setTokens("", "");
                 this.loginStatus = false;
             }
@@ -195,6 +203,7 @@ public class RocketChatAPI {
 
     /**
      * Get login status. True if login was successful.
+     *
      * @return boolean Status of login.
      */
     public boolean getLoginStatus() {
@@ -203,6 +212,7 @@ public class RocketChatAPI {
 
     /**
      * Get id of the room the last message was sent.
+     *
      * @return String Internal id of the room
      */
     public String getLastRoomId() {
@@ -211,6 +221,7 @@ public class RocketChatAPI {
 
     /**
      * Updates e-mail-channel-map
+     *
      * @param newEmailChannels Map with e-mail-address/channel-name
      */
     public void updateEmailChannels(Map<String, String> newEmailChannels) {
@@ -221,7 +232,7 @@ public class RocketChatAPI {
 
     /**
      * Updates channel, room and user information
-      */
+     */
     private void updateAll() {
         getChannels();
         getRooms();
@@ -231,19 +242,18 @@ public class RocketChatAPI {
     /**
      * Get mappings of channel names to internal room-id.
      */
-    private void getChannels() {
+    public void getChannels() {
         try {
             this.rocketConnection.open(HTTPMethods.GET, getApiPath("channels.list"), RequestType.JSON);
             this.rocketConnection.setAuthHeader(this.loginData);
-            JSONObject json = this.rocketConnection.getResponseJSON();
-            boolean status = this.rocketConnection.getStatus();
+            JsonObject json = this.rocketConnection.getResponseJSON();
 
-            if (status && json.getBoolean("success")) {
-                JSONArray channels = json.getJSONArray("channels");
-                for (Object channel : channels) {
-                    if (channel instanceof JSONObject) {
-                        String name = ((JSONObject) channel).getString("name");
-                        String id = ((JSONObject) channel).getString("_id");
+            if (checkStatus(json)) {
+                JsonArray channels = json.getAsJsonArray("channels");
+                for (JsonElement channel : channels) {
+                    if (channel.isJsonObject()) {
+                        String name = channel.getAsJsonObject().get("name").getAsString();
+                        String id = channel.getAsJsonObject().get("_id").getAsString();
                         channelMap.put(name, id);
                     }
                 }
@@ -251,30 +261,27 @@ public class RocketChatAPI {
 
             this.rocketConnection.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
     /**
      * Get mappings of room names to internal room-id.
      */
-    private void getRooms() {
+    public void getRooms() {
         try {
             this.rocketConnection.open(HTTPMethods.GET, getApiPath("rooms.get"), RequestType.JSON);
             this.rocketConnection.setAuthHeader(this.loginData);
-            JSONObject json = this.rocketConnection.getResponseJSON();
-            boolean status = this.rocketConnection.getStatus();
+            JsonObject json = this.rocketConnection.getResponseJSON();
 
-            if (status && json.getBoolean("success")) {
-                JSONArray rooms = json.getJSONArray("update");
-                for (Object room : rooms) {
-                    if (room instanceof JSONObject) {
-                        try {
-                            String name = ((JSONObject) room).getString("name");
-                            String id = ((JSONObject) room).getString("_id");
-                            channelMap.put(name, id);
-                        } catch (JSONException ignored) {
-                        }
+            if (checkStatus(json)) {
+                JsonArray rooms = json.getAsJsonArray("update");
+
+                for (JsonElement room : rooms) {
+                    if (room.isJsonObject()) {
+                        String name = room.getAsJsonObject().get("name").getAsString();
+                        String id = room.getAsJsonObject().get("_id").getAsString();
+                        channelMap.put(name, id);
                     }
                 }
             }
@@ -287,30 +294,31 @@ public class RocketChatAPI {
     /**
      * Get mappings of e-mail-addresses to username
      */
-    private void getUsers() {
+    public void getUsers() {
         try {
             this.rocketConnection.open(HTTPMethods.GET, getApiPath("users.list"), RequestType.JSON);
             this.rocketConnection.setAuthHeader(this.loginData);
-            JSONObject json = this.rocketConnection.getResponseJSON();
-            boolean status = this.rocketConnection.getStatus();
+            JsonObject json = this.rocketConnection.getResponseJSON();
 
-            if (status && json.getBoolean("success")) {
-                JSONArray users = json.getJSONArray("users");
-                for (Object user : users) {
-                    if (user instanceof JSONObject) {
-                        String username = ((JSONObject) user).getString("username");
-                        String id = ((JSONObject) user).getString("_id");
+            if (checkStatus(json)) {
+                JsonArray users = json.getAsJsonArray("users");
+
+                for (JsonElement user : users) {
+                    if (user.isJsonObject()) {
+                        JsonObject userJson = user.getAsJsonObject();
+                        String username = userJson.get("username").getAsString();
+                        String id = userJson.get("_id").getAsString();
                         channelMap.put(username, id);
-                        
-                        try {
-                            JSONArray emails = ((JSONObject) user).getJSONArray("emails");
-                            for (Object email : emails) {
-                                if (email instanceof JSONObject) {
-                                    String address = ((JSONObject) email).getString("address");
-                                    eMailUserMap.put(address, username);
-                                }
+
+                        JsonArray emails = Optional.ofNullable(userJson.getAsJsonArray("emails"))
+                                .orElse(new JsonArray());
+
+                        for (JsonElement email : emails) {
+                            if (email.isJsonObject()) {
+                                String address = email.getAsJsonObject().get("address").getAsString();
+                                eMailUserMap.put(address, username);
                             }
-                        } catch (JSONException ignored) {}
+                        }
                     }
                 }
             }
@@ -318,16 +326,27 @@ public class RocketChatAPI {
             this.rocketConnection.close();
         } catch (IOException ignore) {
         }
-
     }
 
     /**
      * Generate full REST-API-path from provided end-point
+     *
      * @param endPoint String name of end point
      * @return String Full REST-API-path
      */
     private String getApiPath(String endPoint) {
         String apiPath = "/api/v1/";
         return apiPath + endPoint;
+    }
+
+    private boolean checkStatus(JsonObject jsonObject)  {
+        boolean status = this.rocketConnection.getStatus();
+        JsonElement success = jsonObject.get("success");
+
+        if (success != null) {
+               return status & success.getAsBoolean();
+        }
+
+        return false;
     }
 }

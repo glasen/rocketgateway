@@ -13,7 +13,6 @@ dependencies {
     implementation('org.slf4j:slf4j-nop:2.0.6')
     implementation('com.github.davidmoten:subethasmtp:6.0.5')
     implementation('io.github.hakky54:sslcontext-kickstart-for-pem:7.4.11')
-    implementation('org.json:json:20230227')
     implementation('com.google.code.gson:gson:2.10.1')
     implementation('net.sourceforge.argparse4j:argparse4j:0.9.0')
     implementation('org.jsoup:jsoup:1.15.4')

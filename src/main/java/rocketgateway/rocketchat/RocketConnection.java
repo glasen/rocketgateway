@@ -1,7 +1,7 @@
 package rocketgateway.rocketchat;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -97,13 +97,13 @@ public class RocketConnection {
      * Get response in JSON-format from the RocketChat server
      * @return JSONObject
      */
-    public JSONObject getResponseJSON() {
+    public JsonObject getResponseJSON() {
         try {
             byte[] data = con.getInputStream().readAllBytes();
             String responseData = new String(data);
-            return new JSONObject(responseData);
-        } catch (IOException | JSONException ignored) {
-            return new JSONObject();
+            return JsonParser.parseString(responseData).getAsJsonObject();
+        } catch (IOException ignored) {
+            return new JsonObject();
         }
     }
 

@@ -83,16 +83,17 @@ public class RocketEmlMessage {
                     for (DataSource attachment : mimeMessageParser.getAttachmentList()) {
                         String filename = Optional.ofNullable(attachment.getName()).orElse("unknown.dat");
                         String mimeType = Optional.ofNullable(attachment.getContentType()).orElse("application/octet-stream");
-                        InputStream stream = attachment.getInputStream();
-                        byte[] content = stream.readAllBytes();
-                        stream.close();
+                        try (InputStream stream = attachment.getInputStream()) {
+                            byte[] content = stream.readAllBytes();
 
-                        // Only add those attachments which have some content.
-                        if (content.length > 0) {
-                            this.attachments.add(new RocketEmlAttachment(filename, mimeType, content));
+                            // Only add those attachments which have some content.
+                            if (content.length > 0) {
+                                this.attachments.add(new RocketEmlAttachment(filename, mimeType, content));
+                            }
                         }
                     }
-                } catch (Exception ignore) {
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
                 }
             }
         } catch (Exception e) {

@@ -8,6 +8,8 @@ public class RocketEmlAttachment {
     private final String filename;
     private final String mimeType;
     private final byte[] content;
+    private final byte[] boundaryBytes = ("\r\n--envelope-0815\r\n").getBytes();
+    private final byte[] endBoundaryBytes = ("\r\n--envelope-0815--").getBytes();
 
     /**
      * Data class for attachments
@@ -27,26 +29,21 @@ public class RocketEmlAttachment {
      * @throws IOException Thrown when anything goes wrong. Normally this should not happen!
      */
     public byte[] getUploadData() throws IOException {
-        byte[] boundaryBytes = ("\r\n--envelope-0815\r\n").getBytes();
-        byte[] endBoundaryBytes = ("\r\n--envelope-0815--").getBytes();
-
-        ByteArrayOutputStream stream = new ByteArrayOutputStream();
-
-        String headerTemplate = """
+        try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
+            String headerTemplate = """
                 Content-Disposition: form-data; name="file"; filename="%s"\r
                 Content-Type: %s\r
                 \r
                 """;
-        stream.write(boundaryBytes);
-        String header = String.format(headerTemplate, filename, mimeType);
-        byte[] headerBytes = header.getBytes();
-        stream.write(headerBytes);
-        stream.write(content);
-        stream.write(endBoundaryBytes);
-        stream.flush();
-        byte[] outData = stream.toByteArray();
-        stream.close();
+            stream.write(boundaryBytes);
+            String header = String.format(headerTemplate, filename, mimeType);
+            byte[] headerBytes = header.getBytes();
+            stream.write(headerBytes);
+            stream.write(content);
+            stream.write(endBoundaryBytes);
+            stream.flush();
 
-        return outData;
+            return stream.toByteArray();
+        }
     }
 }
