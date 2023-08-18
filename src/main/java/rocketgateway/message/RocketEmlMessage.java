@@ -97,7 +97,7 @@ public class RocketEmlMessage {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
@@ -115,10 +115,7 @@ public class RocketEmlMessage {
                     if (!emailAddress.isEmpty()) {
                         this.recipients.add(new RocketEmlAddress(name, emailAddress));
                     }
-                } catch (Exception ignored) {
-                }
-
-
+                } catch (Exception ignored) {}
             }
         }
     }

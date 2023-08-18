@@ -11,8 +11,8 @@ import java.util.Optional;
 
 public class RocketChatAPI {
     private final LoginData loginData;
-    private final RocketConnection rocketConnection;
     private final String username;
+    private final String serverURL;
     private boolean loginStatus;
     private final Map<String, String> channelMap;
     private final Map<String, String> eMailUserMap;
@@ -29,9 +29,8 @@ public class RocketChatAPI {
     public RocketChatAPI(String username, String password, String serverURL, Map<String, String> emailsChannels) {
         this.username = username;
         this.loginData = new LoginData(username, password);
-
-        this.rocketConnection = new RocketConnection(serverURL);
         this.loginStatus = false;
+        this.serverURL = serverURL;
 
         this.channelMap = new HashMap<>();
         this.eMailUserMap = new HashMap<>(emailsChannels);
@@ -43,11 +42,11 @@ public class RocketChatAPI {
      * Log into RocketChat.
      */
     public void login() {
-        try {
-            this.rocketConnection.open(HTTPMethods.GET, "/api/v1/login", RequestType.JSON);
-            this.rocketConnection.writeJsonData(this.loginData.get());
-            JsonObject json = this.rocketConnection.getResponseJSON();
-            boolean status = this.rocketConnection.getStatus();
+        try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
+            rocketConnection.open(HTTPMethods.GET, "/api/v1/login", RequestType.JSON);
+            rocketConnection.writeJsonData(this.loginData.get());
+            JsonObject json = rocketConnection.getResponseJSON();
+            boolean status = rocketConnection.getStatus();
 
             if (status && json.get("status").getAsString().equals("success")) {
                 JsonObject data = json.getAsJsonObject("data");
@@ -57,8 +56,6 @@ public class RocketChatAPI {
                 this.loginData.setTokens(authToken, userId);
                 this.loginStatus = true;
             }
-
-            this.rocketConnection.close();
         } catch (Exception e) {
             this.loginStatus = false;
         }
@@ -106,9 +103,9 @@ public class RocketChatAPI {
         updateAll();
         boolean sendStatus = false;
 
-        try {
-            this.rocketConnection.open(HTTPMethods.GET, getApiPath("chat.postMessage"), RequestType.JSON);
-            this.rocketConnection.setAuthHeader(this.loginData);
+        try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
+            rocketConnection.open(HTTPMethods.GET, getApiPath("chat.postMessage"), RequestType.JSON);
+            rocketConnection.setAuthHeader(this.loginData);
 
             JsonObject jsonData = new JsonObject();
 
@@ -127,10 +124,10 @@ public class RocketChatAPI {
                 jsonData.addProperty("roomId", roomId);
             }
 
-            this.rocketConnection.writeJsonData(jsonData.toString());
+            rocketConnection.writeJsonData(jsonData.toString());
 
-            JsonObject json = this.rocketConnection.getResponseJSON();
-            boolean status = this.rocketConnection.getStatus();
+            JsonObject json = rocketConnection.getResponseJSON();
+            boolean status = rocketConnection.getStatus();
 
             if (status) {
                 try {
@@ -146,10 +143,8 @@ public class RocketChatAPI {
             if (status && json.get("success").getAsBoolean()) {
                 sendStatus = true;
             }
-
-            this.rocketConnection.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
 
         return sendStatus;
@@ -162,20 +157,20 @@ public class RocketChatAPI {
      * @param roomId  String Internal id of room to upload data
      */
     public void uploadFileToRoom(byte[] outData, String roomId) {
-        try {
+        try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
             String apiPath = getApiPath("rooms.upload");
 
             if (roomId != null) {
                 String fullApiPath = apiPath + "/" + roomId;
-                this.rocketConnection.open(HTTPMethods.POST, fullApiPath, RequestType.BINARY);
-                this.rocketConnection.setAuthHeader(this.loginData);
-                this.rocketConnection.writeBinaryData(outData);
-                this.rocketConnection.getResponseJSON();
-                this.rocketConnection.close();
+                rocketConnection.open(HTTPMethods.POST, fullApiPath, RequestType.BINARY);
+                rocketConnection.setAuthHeader(this.loginData);
+                rocketConnection.writeBinaryData(outData);
+                rocketConnection.getResponseJSON();
+                rocketConnection.close();
                 this.lastRoomId = "";
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
 
     }
@@ -186,19 +181,20 @@ public class RocketChatAPI {
      * @throws IOException Thrown when something went wrong when logging out
      */
     public void logout() throws IOException {
-        if (this.loginStatus) {
-            this.rocketConnection.open(HTTPMethods.POST, "/api/v1/logout", RequestType.JSON);
-            this.rocketConnection.setAuthHeader(this.loginData);
-            JsonObject json = this.rocketConnection.getResponseJSON();
-            boolean status = this.rocketConnection.getStatus();
+        try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
+            if (this.loginStatus) {
+                rocketConnection.open(HTTPMethods.POST, "/api/v1/logout", RequestType.JSON);
+                rocketConnection.setAuthHeader(this.loginData);
+                JsonObject json = rocketConnection.getResponseJSON();
+                boolean status = rocketConnection.getStatus();
 
-            if (status && json.get("status").getAsString().equals("success")) {
-                this.loginData.setTokens("", "");
-                this.loginStatus = false;
+                if (status && json.get("status").getAsString().equals("success")) {
+                    this.loginData.setTokens("", "");
+                    this.loginStatus = false;
+                }
             }
-
-            this.rocketConnection.close();
         }
+
     }
 
     /**
@@ -243,12 +239,12 @@ public class RocketChatAPI {
      * Get mappings of channel names to internal room-id.
      */
     public void getChannels() {
-        try {
-            this.rocketConnection.open(HTTPMethods.GET, getApiPath("channels.list"), RequestType.JSON);
-            this.rocketConnection.setAuthHeader(this.loginData);
-            JsonObject json = this.rocketConnection.getResponseJSON();
+        try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
+            rocketConnection.open(HTTPMethods.GET, getApiPath("channels.list"), RequestType.JSON);
+            rocketConnection.setAuthHeader(this.loginData);
+            JsonObject json = rocketConnection.getResponseJSON();
 
-            if (checkStatus(json)) {
+            if (checkStatus(rocketConnection, json)) {
                 JsonArray channels = json.getAsJsonArray("channels");
                 for (JsonElement channel : channels) {
                     if (channel.isJsonObject()) {
@@ -258,8 +254,6 @@ public class RocketChatAPI {
                     }
                 }
             }
-
-            this.rocketConnection.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -269,12 +263,12 @@ public class RocketChatAPI {
      * Get mappings of room names to internal room-id.
      */
     public void getRooms() {
-        try {
-            this.rocketConnection.open(HTTPMethods.GET, getApiPath("rooms.get"), RequestType.JSON);
-            this.rocketConnection.setAuthHeader(this.loginData);
-            JsonObject json = this.rocketConnection.getResponseJSON();
+        try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
+            rocketConnection.open(HTTPMethods.GET, getApiPath("rooms.get"), RequestType.JSON);
+            rocketConnection.setAuthHeader(this.loginData);
+            JsonObject json = rocketConnection.getResponseJSON();
 
-            if (checkStatus(json)) {
+            if (checkStatus(rocketConnection, json)) {
                 JsonArray rooms = json.getAsJsonArray("update");
 
                 for (JsonElement room : rooms) {
@@ -285,8 +279,6 @@ public class RocketChatAPI {
                     }
                 }
             }
-
-            this.rocketConnection.close();
         } catch (IOException ignore) {
         }
     }
@@ -295,12 +287,12 @@ public class RocketChatAPI {
      * Get mappings of e-mail-addresses to username
      */
     public void getUsers() {
-        try {
-            this.rocketConnection.open(HTTPMethods.GET, getApiPath("users.list"), RequestType.JSON);
-            this.rocketConnection.setAuthHeader(this.loginData);
-            JsonObject json = this.rocketConnection.getResponseJSON();
+        try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
+            rocketConnection.open(HTTPMethods.GET, getApiPath("users.list"), RequestType.JSON);
+            rocketConnection.setAuthHeader(this.loginData);
+            JsonObject json = rocketConnection.getResponseJSON();
 
-            if (checkStatus(json)) {
+            if (checkStatus(rocketConnection, json)) {
                 JsonArray users = json.getAsJsonArray("users");
 
                 for (JsonElement user : users) {
@@ -322,8 +314,6 @@ public class RocketChatAPI {
                     }
                 }
             }
-
-            this.rocketConnection.close();
         } catch (IOException ignore) {
         }
     }
@@ -335,12 +325,11 @@ public class RocketChatAPI {
      * @return String Full REST-API-path
      */
     private String getApiPath(String endPoint) {
-        String apiPath = "/api/v1/";
-        return apiPath + endPoint;
+        return "/api/v1/" + endPoint;
     }
 
-    private boolean checkStatus(JsonObject jsonObject)  {
-        boolean status = this.rocketConnection.getStatus();
+    private boolean checkStatus(RocketConnection rocketConnection, JsonObject jsonObject)  {
+        boolean status = rocketConnection.getStatus();
         JsonElement success = jsonObject.get("success");
 
         if (success != null) {

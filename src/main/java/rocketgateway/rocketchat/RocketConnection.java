@@ -7,7 +7,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-public class RocketConnection {
+public class RocketConnection implements AutoCloseable {
     private final String serverURL;
     private HttpURLConnection con;
     private URL url;
@@ -77,7 +77,7 @@ public class RocketConnection {
         try (OutputStream os = this.con.getOutputStream()) {
             os.write(data);
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
