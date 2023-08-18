@@ -1,7 +1,7 @@
 package rocketgateway.smtp;
 
 import nl.altindag.ssl.SSLFactory;
-import nl.altindag.ssl.util.PemUtils;
+import nl.altindag.ssl.pem.util.PemUtils;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.X509ExtendedKeyManager;
