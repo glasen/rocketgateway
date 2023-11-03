@@ -141,8 +141,8 @@ public class RocketEmlMessage {
      * @return String with message.
      */
     public String makeMessage() {
-        String messageTemplate = "**Sender:** %s\n**Date:** %s\n**Subject:** %s\n**Body:**\n%s";
-        return String.format(messageTemplate, this.sender, this.date, this.subject, this.body);
+        String messageTemplate = "*Date: * %s\n*Subject: * %s\n\n%s";
+        return String.format(messageTemplate, this.date, this.subject, this.body);
     }
 
     /**
