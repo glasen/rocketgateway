@@ -273,9 +273,14 @@ public class RocketChatAPI {
 
                 for (JsonElement room : rooms) {
                     if (room.isJsonObject()) {
-                        String name = room.getAsJsonObject().get("name").getAsString();
-                        String id = room.getAsJsonObject().get("_id").getAsString();
-                        channelMap.put(name, id);
+                        JsonElement nameObject = room.getAsJsonObject().get("name");
+                        JsonElement idObject = room.getAsJsonObject().get("_id");
+
+                        if (nameObject != null & idObject != null) {
+                            String name = nameObject.getAsString();
+                            String id = idObject.getAsString();
+                            channelMap.put(name, id);
+                        }
                     }
                 }
             }
