@@ -53,19 +53,7 @@ public class RocketSMTPServer {
         try {
             if (!brokenTLS)  {
                 smtpServer.start();
-                String statusMessage = String.format("-> Starting SMTP-Server on port %d.\n", this.smtpPort);
-
-                if (this.requireAuth) {
-                    statusMessage += "-> SMTP-authentication is enabled\n";
-                }
-
-                if (this.enableTLS) {
-                    statusMessage += "-> TLS is enabled\n";
-                }
-
-                if (this.getSpam) {
-                    statusMessage += String.format("-> SPAM-catching is enabled. Sending SPAM messages to channel \"%s\" \n", this.spamChannel);
-                }
+                String statusMessage = generateStatusMessage();
 
 
                 System.out.print(statusMessage);
@@ -76,6 +64,23 @@ public class RocketSMTPServer {
         } catch (Exception e) {
             System.out.println("Server couldn't be started: " + e.getMessage());
         }
+    }
+
+    private String generateStatusMessage() {
+        String statusMessage = String.format("-> Starting SMTP-Server on port %d.\n", this.smtpPort);
+
+        if (this.requireAuth) {
+            statusMessage += "-> SMTP-authentication is enabled\n";
+        }
+
+        if (this.enableTLS) {
+            statusMessage += "-> TLS is enabled\n";
+        }
+
+        if (this.getSpam) {
+            statusMessage += String.format("-> SPAM-catching is enabled. Sending SPAM messages to channel \"%s\" \n", this.spamChannel);
+        }
+        return statusMessage;
     }
 
     public void stop() {
