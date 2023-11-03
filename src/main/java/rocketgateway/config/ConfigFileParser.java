@@ -62,7 +62,7 @@ public class ConfigFileParser {
     }
 
     public boolean getSpam() {
-        return this.config.spam().enableSpamCatching();
+        return this.config.spam().getSpam();
     }
 
     public String getSpamChannel() {
