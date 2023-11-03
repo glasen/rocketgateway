@@ -17,6 +17,7 @@ public class CommandLineParser {
         parser.addArgument("-c", "--configfile")
                 .metavar("CONFIGFILE")
                 .help("Name of config-file")
+                .required(true)
                 .type(String.class);
 
 
