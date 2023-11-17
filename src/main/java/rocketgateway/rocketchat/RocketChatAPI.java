@@ -3,6 +3,7 @@ package rocketgateway.rocketchat;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -303,7 +304,14 @@ public class RocketChatAPI {
                 for (JsonElement user : users) {
                     if (user.isJsonObject()) {
                         JsonObject userJson = user.getAsJsonObject();
-                        String username = userJson.get("username").getAsString();
+                        String username = Optional.ofNullable(userJson.get("username"))
+                                .orElse(new JsonPrimitive(""))
+                                .getAsString();
+
+                        if (username.isEmpty()) {
+                            continue;
+                        }
+
                         String id = userJson.get("_id").getAsString();
                         channelMap.put(username, id);
 
