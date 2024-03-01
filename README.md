@@ -43,5 +43,5 @@ Just download the tar-file, unpack it and start the bash-script:
 # Compilation
 
 ```bash
-./gradle build
+./gradlew build
 ```
