@@ -36,3 +36,4 @@ out/
 # Gradle
 build/
 .attach*
+!gradle/wrapper/gradle-wrapper.jar
