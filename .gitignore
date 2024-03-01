@@ -35,5 +35,4 @@ out/
 
 # Gradle
 build/
-.gradle/
 .attach*
