@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 
 public class RocketConnection implements AutoCloseable {
@@ -30,7 +31,7 @@ public class RocketConnection implements AutoCloseable {
      * @throws IOException Thrown when something went wrong.
      */
     public void open(HTTPMethods method, String apiPath, RequestType requestType) throws IOException {
-        this.url = new URL(serverURL + apiPath);
+        this.url = URI.create(serverURL + apiPath).toURL();
         this.con = (HttpURLConnection) url.openConnection();
 
         switch (requestType) {
