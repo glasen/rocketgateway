@@ -16,8 +16,8 @@ public class RocketGateway {
         CommandLineParser parser = new CommandLineParser(args);
         Namespace res = parser.getRes();
 
-        String configfile = res.get("configfile");
-        ConfigFileParser configFileParser = new ConfigFileParser(configfile);
+        String configFile = res.get("configfile");
+        ConfigFileParser configFileParser = new ConfigFileParser(configFile);
         boolean error = configFileParser.parse();
 
         if (error) {

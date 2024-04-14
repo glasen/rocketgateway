@@ -10,8 +10,7 @@ market use a normal email server as an intermediate step.
 For this reason I developed this small program which provides a SMTP-to-RocketChat-gateway. You can simply send an e-mail
 to a specific user (The e-mail address must be provided for each user account) and he will get a message directly in 
 RocketChat. Attachments in the email are converted to file uploads in RocketChat. Since RocketChat, for security 
-reasons, does not support HTML-rendering, HTML-emails are converted to plain-text messages. The original messages
-are additionally sent as file uploads.
+reasons, does not support HTML-rendering, HTML-emails are converted into Markdown-format.
 
 # How to use the program
 

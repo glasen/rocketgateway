@@ -1,11 +1,10 @@
 package rocketgateway.message;
 
+import io.github.furstenheim.CopyDown;
 import jakarta.activation.DataSource;
 import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import rocketgateway.apache_commons_email.MimeMessageParser;
 
 import java.io.InputStream;
@@ -15,6 +14,7 @@ public class RocketEmlMessage {
     private final InputStream data;
     private final Set<RocketEmlAddress> recipients;
     private final List<RocketEmlAttachment> attachments;
+    private final CopyDown converter;
     private String date;
     private String sender;
     private String subject;
@@ -30,6 +30,7 @@ public class RocketEmlMessage {
         this.body = "";
         this.recipients = new HashSet<>();
         this.attachments = new ArrayList<>();
+        this.converter = new CopyDown();
     }
 
     /**
@@ -68,13 +69,7 @@ public class RocketEmlMessage {
             // If there is no plain body check if there is a html body.
             if (this.body.isEmpty() & mimeMessageParser.hasHtmlContent()) {
                 String htmlContent = mimeMessageParser.getHtmlContent();
-
-                // Strip html body of all tags.
-                Document doc = Jsoup.parse(htmlContent);
-                this.body = doc.text().strip().replaceAll("\r\n", "\n");
-
-                // Make an attachment from the original html body so the user can see the original message.
-                this.attachments.add(new RocketEmlAttachment(this.subject+".html", "text/html", htmlContent.getBytes()));
+                this.body = converter.convert(htmlContent);
             }
 
             // Check if there are attachments
@@ -83,6 +78,7 @@ public class RocketEmlMessage {
                     for (DataSource attachment : mimeMessageParser.getAttachmentList()) {
                         String filename = Optional.ofNullable(attachment.getName()).orElse("unknown.dat");
                         String mimeType = Optional.ofNullable(attachment.getContentType()).orElse("application/octet-stream");
+
                         try (InputStream stream = attachment.getInputStream()) {
                             byte[] content = stream.readAllBytes();
 
