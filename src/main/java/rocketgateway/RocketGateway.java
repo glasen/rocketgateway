@@ -1,6 +1,6 @@
 package rocketgateway;
 
-import net.sourceforge.argparse4j.inf.Namespace;
+import eu.tneitzel.argparse4j.inf.Namespace;
 import rocketgateway.config.CommandLineParser;
 import rocketgateway.config.ConfigFileParser;
 import rocketgateway.rocketchat.RocketChatAPI;
