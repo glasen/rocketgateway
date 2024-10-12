@@ -14,7 +14,7 @@ reasons, does not support HTML-rendering, HTML-emails are converted into Markdow
 
 # How to use the program
 
-The program needs an installation of RocketChat-server and at least Java 17 and Gradle 7.x to compile it.
+The program needs an installation of RocketChat-server and at least Java 21 to compile it.
 
 In RocketChat you __must__ create a user which is in the "_bot_"-group e.g. "_email-bot_" which is then used 
 by RocketGateway to send messages. You also __must__ add the permission "_View Full Other User Info_" to the 
