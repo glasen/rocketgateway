@@ -3,15 +3,16 @@ package rocketgateway.rocketchat;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 public class RocketConnection implements AutoCloseable {
     private final String serverURL;
     private HttpURLConnection con;
-    private URL url;
 
     /**
      * This class provides all methods which are needed to generate a connection to a RocketChat-server
@@ -20,7 +21,6 @@ public class RocketConnection implements AutoCloseable {
     public RocketConnection(String serverURL) {
         this.serverURL = serverURL;
         this.con = null;
-        this.url = null;
     }
 
     /**
@@ -31,23 +31,29 @@ public class RocketConnection implements AutoCloseable {
      * @throws IOException Thrown when something went wrong.
      */
     public void open(HTTPMethods method, String apiPath, RequestType requestType) throws IOException {
-        this.url = URI.create(serverURL + apiPath).toURL();
+        URL url = URI.create(serverURL + apiPath).toURL();
         this.con = (HttpURLConnection) url.openConnection();
+
+        this.con.setConnectTimeout(5000);
+        this.con.setReadTimeout(8000);
+        this.con.setRequestMethod(method.name());
+        this.con.setRequestProperty("User-Agent", "RocketGateway/1.0");
 
         switch (requestType) {
             case BINARY -> this.con.setRequestProperty("Content-Type", "multipart/form-data; boundary=envelope-0815");
             case JSON -> {
-                con.setRequestProperty("Accept", "application/json");
-                con.setRequestProperty("Content-Type", "application/json");
+                this.con.setRequestProperty("Accept", "application/json");
+                this.con.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             }
         }
 
         this.con.setUseCaches(false);
         this.con.setDoInput(true);
-        this.con.setDoOutput(true);
 
-        con.setRequestMethod(method.name());
-        con.setDoOutput(true);
+        // Only POST/PUT need output
+        if (method == HTTPMethods.POST || method == HTTPMethods.PUT) {
+            this.con.setDoOutput(true);
+        }
     }
 
     /**
@@ -75,10 +81,15 @@ public class RocketConnection implements AutoCloseable {
      * @param data Data to write
      */
     public void writeBinaryData(byte[] data) {
+        if (!this.con.getDoOutput()) {
+            throw new IllegalStateException("This request does not support output.");
+        }
+
         try (OutputStream os = this.con.getOutputStream()) {
             os.write(data);
+            os.flush();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to write request body", e);
         }
     }
 
@@ -88,8 +99,9 @@ public class RocketConnection implements AutoCloseable {
      */
     public boolean getStatus() {
         try {
-            return this.con.getResponseCode() == 200;
-        } catch (IOException ignored) {
+            int code = this.con.getResponseCode();
+            return code >= 200 && code < 300;
+        } catch (IOException e) {
             return false;
         }
     }
@@ -99,12 +111,22 @@ public class RocketConnection implements AutoCloseable {
      * @return JSONObject
      */
     public JsonObject getResponseJSON() {
-        try {
-            byte[] data = con.getInputStream().readAllBytes();
-            String responseData = new String(data);
-            return JsonParser.parseString(responseData).getAsJsonObject();
-        } catch (IOException ignored) {
-            return new JsonObject();
+        try (InputStream is = getEffectiveInputStream()) {
+            byte[] data = is.readAllBytes();
+            return JsonParser.parseString(new String(data, StandardCharsets.UTF_8)).getAsJsonObject();
+        } catch (IOException e) {
+            JsonObject error = new JsonObject();
+            error.addProperty("error", e.getMessage());
+            return error;
+        }
+    }
+
+    private InputStream getEffectiveInputStream() throws IOException {
+        int status = this.con.getResponseCode();
+        if (status >= 200 && status < 300) {
+            return this.con.getInputStream();
+        } else {
+            return this.con.getErrorStream();
         }
     }
 
