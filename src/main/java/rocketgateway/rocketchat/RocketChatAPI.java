@@ -186,10 +186,21 @@ public class RocketChatAPI {
             if (this.loginStatus) {
                 rocketConnection.open(HTTPMethods.POST, "/api/v1/logout", RequestType.JSON);
                 rocketConnection.setAuthHeader(this.loginData);
-                JsonObject json = rocketConnection.getResponseJSON();
                 boolean status = rocketConnection.getStatus();
 
-                if (status && json.get("status").getAsString().equals("success")) {
+                String statusString;
+
+                try {
+                    JsonObject json = rocketConnection.getResponseJSON();
+                    statusString = json.get("status").getAsString();
+                } catch (Exception e) {
+                    // Workaround for missing return-value of RocketChat. Newer versions don't return
+                    // a JSON on logout. Always assume that the logout was successful.
+
+                    statusString = "success";
+                }
+
+                if (status && statusString.equals("success")) {
                     this.loginData.setTokens("", "");
                     this.loginStatus = false;
                 }
