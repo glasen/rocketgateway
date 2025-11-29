@@ -5,6 +5,7 @@ import rocketgateway.config.CommandLineParser;
 import rocketgateway.config.ConfigFileParser;
 import rocketgateway.rocketchat.RocketChatAPI;
 import rocketgateway.smtp.RocketSMTPServer;
+import rocketgateway.smtp.SMTPConfig;
 import rocketgateway.smtp.SSLLoader;
 import sun.misc.Signal;
 
@@ -64,8 +65,9 @@ public class RocketGateway {
         }
 
         RocketChatAPI bot = new RocketChatAPI(botUsername, botPassword, rocketChatURL, emailChannels);
-        RocketSMTPServer smtpServer = new RocketSMTPServer(smtpPort, smtpUsername, smtpPassword,
-                bot, requireAuth, enableTLS, getSpam, spamChannel);
+
+        SMTPConfig smtpConfig = new SMTPConfig(smtpPort, smtpUsername, smtpPassword, requireAuth, enableTLS);
+        RocketSMTPServer smtpServer = new RocketSMTPServer(smtpConfig, bot, getSpam, spamChannel);
 
         bot.login();
 

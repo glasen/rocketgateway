@@ -17,19 +17,18 @@ public class RocketSMTPServer {
     private final boolean requireAuth;
     private boolean brokenTLS;
 
-    public RocketSMTPServer(int smtpPort, String username, String password, RocketChatAPI bot,
-                            boolean requireAuth, boolean enableTLS,
-                            boolean getSpam, String spamChannel) {
-        this.smtpPort = smtpPort;
-        this.requireAuth = requireAuth;
-        this.enableTLS = enableTLS;
+    public RocketSMTPServer(SMTPConfig smtpConfig, RocketChatAPI bot, boolean getSpam, String spamChannel) {
+        this.smtpPort = smtpConfig.smtpPort();
+        this.requireAuth = smtpConfig.requireAuth();
+        this.enableTLS = smtpConfig.enableTLS();
         this.getSpam = getSpam;
         this.spamChannel = spamChannel;
         this.brokenTLS = false;
 
         RocketMessageHandler messageFactory = new RocketMessageHandler(bot, getSpam, spamChannel) ;
-        RocketPasswordValidator validator = new RocketPasswordValidator(username, password);
+        RocketPasswordValidator validator = new RocketPasswordValidator(smtpConfig.smtpUsername(), smtpConfig.smtpPassword());
         AuthenticationHandlerFactory authHandlerFactory = new EasyAuthenticationHandlerFactory(validator);
+
         SMTPServer.Builder smtpServerBuilder = SMTPServer
                 .port(this.smtpPort)
                 .requireAuth(requireAuth)
