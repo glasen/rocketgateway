@@ -8,6 +8,7 @@ import jakarta.mail.internet.MimeMessage;
 import rocketgateway.apache_commons_email.MimeMessageParser;
 import rocketgateway.rocketchat.Helpers;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 
@@ -75,22 +76,8 @@ public class RocketEmlMessage {
 
             // Check if there are attachments
             if (mimeMessageParser.hasAttachments()) {
-                try {
-                    for (DataSource attachment : mimeMessageParser.getAttachmentList()) {
-                        String filename = Helpers.safeString(attachment.getName(), "unknown.dat");
-                        String mimeType = Helpers.safeString(attachment.getContentType(), "application/octet-stream");
-
-                        try (InputStream stream = attachment.getInputStream()) {
-                            byte[] content = stream.readAllBytes();
-
-                            // Only add those attachments which have some content.
-                            if (content.length > 0) {
-                                this.attachments.add(new RocketEmlAttachment(filename, mimeType, content));
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+                for (DataSource attachment : mimeMessageParser.getAttachmentList()) {
+                    getAttachment(attachment);
                 }
             }
         } catch (Exception e) {
@@ -98,8 +85,23 @@ public class RocketEmlMessage {
         }
     }
 
+    private void getAttachment(DataSource attachment) throws IOException {
+        String filename = Helpers.safeString(attachment.getName(), "unknown.dat");
+        String mimeType = Helpers.safeString(attachment.getContentType(), "application/octet-stream");
+
+        try (InputStream stream = attachment.getInputStream()) {
+            byte[] content = stream.readAllBytes();
+
+            // Only add those attachments which have some content.
+            if (content.length > 0) {
+                this.attachments.add(new RocketEmlAttachment(filename, mimeType, content));
+            }
+        }
+    }
+
     /**
      * Extract address data from Address-object. We only need the name and the address.
+     *
      * @param addresses List with Address-objects
      */
     private void getAddresses(List<Address> addresses) {
@@ -112,13 +114,15 @@ public class RocketEmlMessage {
                     if (!emailAddress.isEmpty()) {
                         this.recipients.add(new RocketEmlAddress(name, emailAddress));
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         }
     }
 
     /**
      * Get addresses
+     *
      * @return Set with RocketEmlAddress
      */
     public Set<RocketEmlAddress> getRecipients() {
@@ -127,6 +131,7 @@ public class RocketEmlMessage {
 
     /**
      * Get attachments
+     *
      * @return List with RocketEMLAttachment
      */
     public List<RocketEmlAttachment> getAttachments() {
@@ -135,6 +140,7 @@ public class RocketEmlMessage {
 
     /**
      * Generates RocketChat-message from stored data. The first lines are Markdown-formatted
+     *
      * @return String with message.
      */
     public String makeMessage() {
@@ -144,6 +150,7 @@ public class RocketEmlMessage {
 
     /**
      * Get sender of message.
+     *
      * @return String with sender e-mail-address
      */
     public String getSender() {
