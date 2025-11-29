@@ -30,7 +30,7 @@ public class SSLLoader {
         this.extendedKeyManager = this.getExtendedKeyManager();
         this.trustManager = this.getTrustManager();
 
-        if (this.extendedKeyManager != null & this.trustManager != null) {
+        if (this.extendedKeyManager != null && this.trustManager != null) {
             this.generateSSLContent();
         }
     }

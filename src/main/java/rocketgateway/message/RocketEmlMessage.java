@@ -67,7 +67,7 @@ public class RocketEmlMessage {
             }
 
             // If there is no plain body check if there is a html body.
-            if (this.body.isEmpty() & mimeMessageParser.hasHtmlContent()) {
+            if (this.body.isEmpty() && mimeMessageParser.hasHtmlContent()) {
                 String htmlContent = mimeMessageParser.getHtmlContent();
                 this.body = converter.convert(htmlContent);
             }

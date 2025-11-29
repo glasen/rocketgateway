@@ -288,7 +288,7 @@ public class RocketChatAPI {
                         JsonElement nameObject = room.getAsJsonObject().get("name");
                         JsonElement idObject = room.getAsJsonObject().get("_id");
 
-                        if (nameObject != null & idObject != null) {
+                        if (nameObject != null && idObject != null) {
                             String name = nameObject.getAsString();
                             String id = idObject.getAsString();
                             channelMap.put(name, id);
@@ -357,7 +357,7 @@ public class RocketChatAPI {
         JsonElement success = jsonObject.get("success");
 
         if (success != null) {
-               return status & success.getAsBoolean();
+               return status && success.getAsBoolean();
         }
 
         return false;

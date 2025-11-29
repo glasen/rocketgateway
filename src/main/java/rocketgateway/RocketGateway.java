@@ -55,11 +55,11 @@ public class RocketGateway {
             }
         }
 
-        if (botUsername == null | botPassword == null) {
+        if (botUsername == null || botPassword == null) {
             throw new RuntimeException("You need to provide the credentials for a RocketChat-User!");
         }
 
-        if (requireAuth & (smtpUsername == null | smtpPassword == null)) {
+        if (requireAuth & (smtpUsername == null || smtpPassword == null)) {
             throw new RuntimeException("You need to provide the credentials for the SMTP-server!");
         }
 

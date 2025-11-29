@@ -15,7 +15,7 @@ public class RocketPasswordValidator implements UsernamePasswordValidator {
 
     @Override
     public void login(String username, String password, MessageContext context) throws LoginFailedException {
-        if (!this.username.equals(username) & !this.password.equals(password)) {
+        if (!this.username.equals(username) && !this.password.equals(password)) {
             throw new LoginFailedException();
         }
     }
