@@ -39,14 +39,8 @@ public class RocketEmlMessage {
      * Parses the EML-message and extracts the needed data from it.
      */
     public void parseEML() {
-        // Create dummy smtp-server entries. MimeMessage needs them.
-        Properties props = System.getProperties();
-        props.put("mail.host", "smtp.dummydomain.com");
-        props.put("mail.transport.protocol", "smtp");
-        Session mailSession = Session.getDefaultInstance(props, null);
-
         try {
-            MimeMessage message = new MimeMessage(mailSession, this.data);
+            MimeMessage message = new MimeMessage(Helpers.getSession(), this.data);
             MimeMessageParser mimeMessageParser = new MimeMessageParser(message);
             mimeMessageParser.parse();
 
