@@ -112,7 +112,7 @@ public class RocketChatAPI {
 
             jsonData.addProperty("text", message);
 
-            if (!Optional.ofNullable(alias).orElse("").isEmpty()) {
+            if (!Helpers.safeString(alias).isEmpty()) {
                 jsonData.addProperty("alias", alias);
             }
 

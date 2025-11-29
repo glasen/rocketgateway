@@ -6,6 +6,7 @@ import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import rocketgateway.apache_commons_email.MimeMessageParser;
+import rocketgateway.rocketchat.Helpers;
 
 import java.io.InputStream;
 import java.util.*;
@@ -51,8 +52,8 @@ public class RocketEmlMessage {
             // Return 1970-01-01 if date from e-mail cannot be extracted.
             this.date = Optional.ofNullable(message.getSentDate()).orElse(new Date(0)).toString();
 
-            this.sender = Optional.ofNullable(mimeMessageParser.getFrom()).orElse("");
-            this.subject = Optional.ofNullable(mimeMessageParser.getSubject()).orElse("");
+            this.sender = Helpers.safeString(mimeMessageParser.getFrom());
+            this.subject = Helpers.safeString(mimeMessageParser.getSubject());
 
             // Parse email-addresses
             getAddresses(mimeMessageParser.getTo());
@@ -63,7 +64,7 @@ public class RocketEmlMessage {
                cannot show HTML-content.
              */
             if (mimeMessageParser.hasPlainContent()) {
-                this.body = Optional.ofNullable(mimeMessageParser.getPlainContent()).orElse("").strip().replaceAll("\r\n", "\n");
+                this.body = Helpers.safeString(mimeMessageParser.getPlainContent()).strip().replaceAll("\r\n", "\n");
             }
 
             // If there is no plain body check if there is a html body.
@@ -76,8 +77,8 @@ public class RocketEmlMessage {
             if (mimeMessageParser.hasAttachments()) {
                 try {
                     for (DataSource attachment : mimeMessageParser.getAttachmentList()) {
-                        String filename = Optional.ofNullable(attachment.getName()).orElse("unknown.dat");
-                        String mimeType = Optional.ofNullable(attachment.getContentType()).orElse("application/octet-stream");
+                        String filename = Helpers.safeString(attachment.getName(), "unknown.dat");
+                        String mimeType = Helpers.safeString(attachment.getContentType(), "application/octet-stream");
 
                         try (InputStream stream = attachment.getInputStream()) {
                             byte[] content = stream.readAllBytes();
@@ -105,8 +106,8 @@ public class RocketEmlMessage {
         if (addresses != null) {
             for (Address address : addresses) {
                 try {
-                    String emailAddress = Optional.ofNullable(((InternetAddress) address).getAddress()).orElse("");
-                    String name = Optional.ofNullable(((InternetAddress) address).getPersonal()).orElse("");
+                    String emailAddress = Helpers.safeString(((InternetAddress) address).getAddress());
+                    String name = Helpers.safeString(((InternetAddress) address).getPersonal());
 
                     if (!emailAddress.isEmpty()) {
                         this.recipients.add(new RocketEmlAddress(name, emailAddress));
