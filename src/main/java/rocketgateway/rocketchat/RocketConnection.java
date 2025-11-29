@@ -27,10 +27,10 @@ public class RocketConnection implements AutoCloseable {
      * Open a connection to a RocketChat-server with a specific HTTP-method and request type.
      * @param method HTTPMethods POST, GET or PUT
      * @param apiPath Full REST-API-endpoint e.g. "/api/v1/login"
-     * @param requestType RequestType e.g. RequestType.JSON or RequestType.BINARY
+     * @param binary When true use binary mode for sending data.
      * @throws IOException Thrown when something went wrong.
      */
-    public void open(HTTPMethods method, String apiPath, RequestType requestType) throws IOException {
+    public void open(HTTPMethods method, String apiPath, boolean binary) throws IOException {
         URL url = URI.create(serverURL + apiPath).toURL();
         this.con = (HttpURLConnection) url.openConnection();
 
@@ -39,12 +39,11 @@ public class RocketConnection implements AutoCloseable {
         this.con.setRequestMethod(method.name());
         this.con.setRequestProperty("User-Agent", "RocketGateway/1.0");
 
-        switch (requestType) {
-            case BINARY -> this.con.setRequestProperty("Content-Type", "multipart/form-data; boundary=envelope-0815");
-            case JSON -> {
-                this.con.setRequestProperty("Accept", "application/json");
-                this.con.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-            }
+        if (binary) {
+            this.con.setRequestProperty("Content-Type", "multipart/form-data; boundary=envelope-0815");
+        } else {
+            this.con.setRequestProperty("Accept", "application/json");
+            this.con.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
         }
 
         this.con.setUseCaches(false);
