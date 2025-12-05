@@ -166,7 +166,6 @@ public class RocketChatAPI {
                 rocketConnection.open(HTTPMethods.POST, fullApiPath, true);
                 rocketConnection.setAuthHeader(this.loginData);
                 rocketConnection.writeBinaryData(outData);
-                rocketConnection.close();
                 this.lastRoomId = "";
             }
         } catch (IOException e) {

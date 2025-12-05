@@ -121,8 +121,8 @@ public class RocketConnection implements AutoCloseable {
     }
 
     private InputStream getEffectiveInputStream() throws IOException {
-        int status = this.con.getResponseCode();
-        if (status >= 200 && status < 300) {
+        boolean status = getStatus();
+        if (status) {
             return this.con.getInputStream();
         } else {
             return this.con.getErrorStream();
