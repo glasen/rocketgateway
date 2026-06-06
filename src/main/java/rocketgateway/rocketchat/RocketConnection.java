@@ -71,7 +71,7 @@ public class RocketConnection implements AutoCloseable {
      * @param jsonString String to write in JSON-format
      */
     public void writeJsonData(String jsonString) {
-        byte[] data = jsonString.getBytes();
+        byte[] data = jsonString.getBytes(StandardCharsets.UTF_8);
         this.writeBinaryData(data);
     }
 

@@ -2,14 +2,15 @@ package rocketgateway.message;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 public class RocketEmlAttachment {
 
     private final String filename;
     private final String mimeType;
     private final byte[] content;
-    private final byte[] boundaryBytes = ("\r\n--envelope-0815\r\n").getBytes();
-    private final byte[] endBoundaryBytes = ("\r\n--envelope-0815--").getBytes();
+    private final byte[] boundaryBytes = ("\r\n--envelope-0815\r\n").getBytes(StandardCharsets.UTF_8);
+    private final byte[] endBoundaryBytes = ("\r\n--envelope-0815--").getBytes(StandardCharsets.UTF_8);
 
     /**
      * Data class for attachments
@@ -37,7 +38,7 @@ public class RocketEmlAttachment {
                 """;
             stream.write(boundaryBytes);
             String header = String.format(headerTemplate, filename, mimeType);
-            byte[] headerBytes = header.getBytes();
+            byte[] headerBytes = header.getBytes(StandardCharsets.UTF_8);
             stream.write(headerBytes);
             stream.write(content);
             stream.write(endBoundaryBytes);
