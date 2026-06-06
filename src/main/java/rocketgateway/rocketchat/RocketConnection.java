@@ -111,6 +111,11 @@ public class RocketConnection implements AutoCloseable {
      */
     public JsonObject getResponseJSON() {
         try (InputStream is = getEffectiveInputStream()) {
+            if (is == null) {
+                JsonObject error = new JsonObject();
+                error.addProperty("error", "No response body available");
+                return error;
+            }
             byte[] data = is.readAllBytes();
             return JsonParser.parseString(new String(data, StandardCharsets.UTF_8)).getAsJsonObject();
         } catch (IOException e) {
