@@ -80,10 +80,14 @@ public class RocketChatAPI {
      * @return boolean Returns true if the message was successfully sent.
      */
     public boolean sendMessageToEmailAddress(String message, String address, String alias) {
-        updateAll();
-
-        // Get channelName for the provided e-mail address.
+        // Get channelName for the provided e-mail address. Only hit the server to refresh the
+        // mappings when the address is not yet known, instead of on every single message.
         String channelName = this.eMailUserMap.get(address);
+
+        if (channelName == null) {
+            updateAll();
+            channelName = this.eMailUserMap.get(address);
+        }
 
         if (channelName != null) {
             return sendMessageToChannel(message, channelName, alias);
@@ -101,8 +105,18 @@ public class RocketChatAPI {
      * @return boolean Returns true if the message was successfully sent.
      */
     public boolean sendMessageToChannel(String message, String channelName, String alias) {
-        updateAll();
         boolean sendStatus = false;
+
+        /* Get room-id for channel name. All rooms and channels have a unique id. The room-id is the only
+           way to send a message by the same method to a user or a channel. Refresh the mappings from the
+           server only when the channel is not yet known.
+        */
+        String roomId = channelMap.get(channelName);
+
+        if (roomId == null) {
+            updateAll();
+            roomId = channelMap.get(channelName);
+        }
 
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
             rocketConnection.open(HTTPMethods.POST, getApiPath("chat.postMessage"), false);
@@ -115,11 +129,6 @@ public class RocketChatAPI {
             if (!Helpers.safeString(alias).isEmpty()) {
                 jsonData.addProperty("alias", alias);
             }
-
-            /* Get room-id for channel name. All rooms and channels have a unique id. The room-id is the only
-               way to send a message by the same method to a user or a channel.
-            */
-            String roomId = channelMap.get(channelName);
 
             if (roomId != null) {
                 jsonData.addProperty("roomId", roomId);
