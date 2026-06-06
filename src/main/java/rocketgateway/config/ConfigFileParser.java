@@ -25,12 +25,49 @@ public class ConfigFileParser {
                     .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
                     .create();
 
-            this.config = gson.fromJson(json, RocketGatewayConfig.class);
+            RocketGatewayConfig parsed = gson.fromJson(json, RocketGatewayConfig.class);
+
+            if (parsed == null) {
+                this.errorMessage = "Configuration file is empty or could not be parsed.";
+                return true;
+            }
+
+            String missingSection = findMissingSection(parsed);
+            if (missingSection != null) {
+                this.errorMessage = String.format("Missing required configuration section: \"%s\"", missingSection);
+                return true;
+            }
+
+            // Only replace the active config once the new one is known to be valid. This keeps the
+            // previously loaded configuration intact when a reload provides a broken file.
+            this.config = parsed;
             return false;
         } catch (Exception e) {
             this.errorMessage = e.toString();
             return true;
         }
+    }
+
+    /**
+     * Checks that all mandatory top-level sections are present.
+     *
+     * @param config Parsed configuration to validate
+     * @return Name of the first missing section, or null when all required sections are present.
+     */
+    private String findMissingSection(RocketGatewayConfig config) {
+        if (config.smtp() == null) {
+            return "smtp";
+        }
+        if (config.rocketchat() == null) {
+            return "rocketchat";
+        }
+        if (config.spam() == null) {
+            return "spam";
+        }
+        if (config.tls() == null) {
+            return "tls";
+        }
+        return null;
     }
 
     public int getPort() {
@@ -96,8 +133,10 @@ public class ConfigFileParser {
     public Map<String, String> getEmailChannels() {
         Map<String, String> emailChannelMap = new HashMap<>();
 
-        for (EmailChannels map : this.config.emailChannels()) {
-            emailChannelMap.put(map.address(), map.channel());
+        if (this.config.emailChannels() != null) {
+            for (EmailChannels map : this.config.emailChannels()) {
+                emailChannelMap.put(map.address(), map.channel());
+            }
         }
         return emailChannelMap;
     }
