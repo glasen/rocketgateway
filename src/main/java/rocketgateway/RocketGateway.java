@@ -60,7 +60,7 @@ public class RocketGateway {
             throw new RuntimeException("You need to provide the credentials for a RocketChat-User!");
         }
 
-        if (requireAuth & (smtpUsername == null || smtpPassword == null)) {
+        if (requireAuth && (smtpUsername == null || smtpPassword == null)) {
             throw new RuntimeException("You need to provide the credentials for the SMTP-server!");
         }
 
