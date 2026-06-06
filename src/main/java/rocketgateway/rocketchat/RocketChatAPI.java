@@ -194,6 +194,13 @@ public class RocketChatAPI {
             if (this.loginStatus) {
                 rocketConnection.open(HTTPMethods.POST, getApiPath("logout"), null);
                 rocketConnection.setAuthHeader(this.loginData);
+
+                /* The logout endpoint takes no parameters, but the request still declares
+                   Content-Type: application/json. Sending an empty body makes RocketChat's JSON body
+                   parser reject the request, so write a valid empty JSON object.
+                */
+                rocketConnection.writeJsonData("{}");
+
                 boolean status = rocketConnection.getStatus();
 
                 String statusString;
