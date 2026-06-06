@@ -48,8 +48,9 @@ public class RocketHandler implements MessageHandler {
                 if (!roomId.isEmpty()) {
                     for (RocketEmlAttachment attachment : attachments) {
                         try {
-                            byte[] attachmentData = attachment.getUploadData();
-                            this.bot.uploadFileToRoom(attachmentData, roomId);
+                            String boundary = RocketEmlAttachment.newBoundary();
+                            byte[] attachmentData = attachment.getUploadData(boundary);
+                            this.bot.uploadFileToRoom(attachmentData, boundary, roomId);
                         } catch (IOException e) {
                             this.bot.sendMessageToEmailAddress("_Couldn't upload attachments!_", address, null);
                         }

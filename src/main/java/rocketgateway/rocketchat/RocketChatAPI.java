@@ -44,7 +44,7 @@ public class RocketChatAPI {
      */
     public void login() {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.POST, getApiPath("login"), false);
+            rocketConnection.open(HTTPMethods.POST, getApiPath("login"), null);
             rocketConnection.writeJsonData(this.loginData.get());
             JsonObject json = rocketConnection.getResponseJSON();
             boolean status = rocketConnection.getStatus();
@@ -119,7 +119,7 @@ public class RocketChatAPI {
         }
 
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.POST, getApiPath("chat.postMessage"), false);
+            rocketConnection.open(HTTPMethods.POST, getApiPath("chat.postMessage"), null);
             rocketConnection.setAuthHeader(this.loginData);
 
             JsonObject jsonData = new JsonObject();
@@ -163,16 +163,17 @@ public class RocketChatAPI {
     /**
      * Upload a file to a specific room/channel
      *
-     * @param outData byte[] Attachment data
-     * @param roomId  String Internal id of room to upload data
+     * @param outData  byte[] Attachment data
+     * @param boundary String Multipart boundary used to build outData
+     * @param roomId   String Internal id of room to upload data
      */
-    public void uploadFileToRoom(byte[] outData, String roomId) {
+    public void uploadFileToRoom(byte[] outData, String boundary, String roomId) {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
             String apiPath = getApiPath("rooms.upload");
 
             if (roomId != null) {
                 String fullApiPath = apiPath + "/" + roomId;
-                rocketConnection.open(HTTPMethods.POST, fullApiPath, true);
+                rocketConnection.open(HTTPMethods.POST, fullApiPath, boundary);
                 rocketConnection.setAuthHeader(this.loginData);
                 rocketConnection.writeBinaryData(outData);
                 this.lastRoomId = "";
@@ -191,7 +192,7 @@ public class RocketChatAPI {
     public void logout() throws IOException {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
             if (this.loginStatus) {
-                rocketConnection.open(HTTPMethods.POST, getApiPath("logout"), false);
+                rocketConnection.open(HTTPMethods.POST, getApiPath("logout"), null);
                 rocketConnection.setAuthHeader(this.loginData);
                 boolean status = rocketConnection.getStatus();
 
@@ -259,7 +260,7 @@ public class RocketChatAPI {
      */
     public void getChannels() {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.GET, getApiPath("channels.list"), false);
+            rocketConnection.open(HTTPMethods.GET, getApiPath("channels.list"), null);
             rocketConnection.setAuthHeader(this.loginData);
             JsonObject json = rocketConnection.getResponseJSON();
 
@@ -283,7 +284,7 @@ public class RocketChatAPI {
      */
     public void getRooms() {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.GET, getApiPath("rooms.get"), false);
+            rocketConnection.open(HTTPMethods.GET, getApiPath("rooms.get"), null);
             rocketConnection.setAuthHeader(this.loginData);
             JsonObject json = rocketConnection.getResponseJSON();
 
@@ -312,7 +313,7 @@ public class RocketChatAPI {
      */
     public void getUsers() {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.GET, getApiPath("users.list"), false);
+            rocketConnection.open(HTTPMethods.GET, getApiPath("users.list"), null);
             rocketConnection.setAuthHeader(this.loginData);
             JsonObject json = rocketConnection.getResponseJSON();
 
