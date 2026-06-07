@@ -16,9 +16,9 @@ public abstract class Helpers {
 
     public static Session getSession() {
         // Create dummy smtp-server entries. MimeMessage needs them.
-        Properties props = System.getProperties();
+        Properties props = new Properties();
         props.put("mail.host", "smtp.dummydomain.com");
         props.put("mail.transport.protocol", "smtp");
-        return Session.getDefaultInstance(props, null);
+        return Session.getInstance(props, null);
     }
 }

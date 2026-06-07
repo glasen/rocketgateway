@@ -44,7 +44,7 @@ public class RocketChatAPI {
      */
     public void login() {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.POST, getApiPath("login"), false);
+            rocketConnection.open(HTTPMethods.POST, getApiPath("login"), null);
             rocketConnection.writeJsonData(this.loginData.get());
             JsonObject json = rocketConnection.getResponseJSON();
             boolean status = rocketConnection.getStatus();
@@ -80,10 +80,14 @@ public class RocketChatAPI {
      * @return boolean Returns true if the message was successfully sent.
      */
     public boolean sendMessageToEmailAddress(String message, String address, String alias) {
-        updateAll();
-
-        // Get channelName for the provided e-mail address.
+        // Get channelName for the provided e-mail address. Only hit the server to refresh the
+        // mappings when the address is not yet known, instead of on every single message.
         String channelName = this.eMailUserMap.get(address);
+
+        if (channelName == null) {
+            updateAll();
+            channelName = this.eMailUserMap.get(address);
+        }
 
         if (channelName != null) {
             return sendMessageToChannel(message, channelName, alias);
@@ -101,11 +105,21 @@ public class RocketChatAPI {
      * @return boolean Returns true if the message was successfully sent.
      */
     public boolean sendMessageToChannel(String message, String channelName, String alias) {
-        updateAll();
         boolean sendStatus = false;
 
+        /* Get room-id for channel name. All rooms and channels have a unique id. The room-id is the only
+           way to send a message by the same method to a user or a channel. Refresh the mappings from the
+           server only when the channel is not yet known.
+        */
+        String roomId = channelMap.get(channelName);
+
+        if (roomId == null) {
+            updateAll();
+            roomId = channelMap.get(channelName);
+        }
+
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.POST, getApiPath("chat.postMessage"), false);
+            rocketConnection.open(HTTPMethods.POST, getApiPath("chat.postMessage"), null);
             rocketConnection.setAuthHeader(this.loginData);
 
             JsonObject jsonData = new JsonObject();
@@ -115,11 +129,6 @@ public class RocketChatAPI {
             if (!Helpers.safeString(alias).isEmpty()) {
                 jsonData.addProperty("alias", alias);
             }
-
-            /* Get room-id for channel name. All rooms and channels have a unique id. The room-id is the only
-               way to send a message by the same method to a user or a channel.
-            */
-            String roomId = channelMap.get(channelName);
 
             if (roomId != null) {
                 jsonData.addProperty("roomId", roomId);
@@ -154,16 +163,17 @@ public class RocketChatAPI {
     /**
      * Upload a file to a specific room/channel
      *
-     * @param outData byte[] Attachment data
-     * @param roomId  String Internal id of room to upload data
+     * @param outData  byte[] Attachment data
+     * @param boundary String Multipart boundary used to build outData
+     * @param roomId   String Internal id of room to upload data
      */
-    public void uploadFileToRoom(byte[] outData, String roomId) {
+    public void uploadFileToRoom(byte[] outData, String boundary, String roomId) {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
             String apiPath = getApiPath("rooms.upload");
 
             if (roomId != null) {
                 String fullApiPath = apiPath + "/" + roomId;
-                rocketConnection.open(HTTPMethods.POST, fullApiPath, true);
+                rocketConnection.open(HTTPMethods.POST, fullApiPath, boundary);
                 rocketConnection.setAuthHeader(this.loginData);
                 rocketConnection.writeBinaryData(outData);
                 this.lastRoomId = "";
@@ -182,8 +192,15 @@ public class RocketChatAPI {
     public void logout() throws IOException {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
             if (this.loginStatus) {
-                rocketConnection.open(HTTPMethods.POST, getApiPath("logout"), false);
+                rocketConnection.open(HTTPMethods.POST, getApiPath("logout"), null);
                 rocketConnection.setAuthHeader(this.loginData);
+
+                /* The logout endpoint takes no parameters, but the request still declares
+                   Content-Type: application/json. Sending an empty body makes RocketChat's JSON body
+                   parser reject the request, so write a valid empty JSON object.
+                */
+                rocketConnection.writeJsonData("{}");
+
                 boolean status = rocketConnection.getStatus();
 
                 String statusString;
@@ -250,7 +267,7 @@ public class RocketChatAPI {
      */
     public void getChannels() {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.GET, getApiPath("channels.list"), false);
+            rocketConnection.open(HTTPMethods.GET, getApiPath("channels.list"), null);
             rocketConnection.setAuthHeader(this.loginData);
             JsonObject json = rocketConnection.getResponseJSON();
 
@@ -274,7 +291,7 @@ public class RocketChatAPI {
      */
     public void getRooms() {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.GET, getApiPath("rooms.get"), false);
+            rocketConnection.open(HTTPMethods.GET, getApiPath("rooms.get"), null);
             rocketConnection.setAuthHeader(this.loginData);
             JsonObject json = rocketConnection.getResponseJSON();
 
@@ -303,7 +320,7 @@ public class RocketChatAPI {
      */
     public void getUsers() {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.GET, getApiPath("users.list"), false);
+            rocketConnection.open(HTTPMethods.GET, getApiPath("users.list"), null);
             rocketConnection.setAuthHeader(this.loginData);
             JsonObject json = rocketConnection.getResponseJSON();
 

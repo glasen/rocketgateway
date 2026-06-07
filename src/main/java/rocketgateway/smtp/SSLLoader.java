@@ -17,7 +17,7 @@ public class SSLLoader {
     private final X509ExtendedTrustManager trustManager;
     private final String[] protocols;
     private SSLContext sslContext;
-    public static SSLLoader instance;
+    private static SSLLoader instance;
 
     private SSLLoader(String certificateChainFile, String privateKeyFile,
                       String privateKeyPassword, String trustedCertificateFile, String[] protocols) {

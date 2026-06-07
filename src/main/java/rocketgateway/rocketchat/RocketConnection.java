@@ -27,10 +27,10 @@ public class RocketConnection implements AutoCloseable {
      * Open a connection to a RocketChat-server with a specific HTTP-method and request type.
      * @param method HTTPMethods POST, GET or PUT
      * @param apiPath Full REST-API-endpoint e.g. "/api/v1/login"
-     * @param binary When true use binary mode for sending data.
+     * @param boundary Multipart boundary to use for a binary upload, or null for a JSON request.
      * @throws IOException Thrown when something went wrong.
      */
-    public void open(HTTPMethods method, String apiPath, boolean binary) throws IOException {
+    public void open(HTTPMethods method, String apiPath, String boundary) throws IOException {
         URL url = URI.create(serverURL + apiPath).toURL();
         this.con = (HttpURLConnection) url.openConnection();
 
@@ -39,8 +39,8 @@ public class RocketConnection implements AutoCloseable {
         this.con.setRequestMethod(method.name());
         this.con.setRequestProperty("User-Agent", "RocketGateway/1.0");
 
-        if (binary) {
-            this.con.setRequestProperty("Content-Type", "multipart/form-data; boundary=envelope-0815");
+        if (boundary != null) {
+            this.con.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
         } else {
             this.con.setRequestProperty("Accept", "application/json");
             this.con.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
@@ -71,7 +71,7 @@ public class RocketConnection implements AutoCloseable {
      * @param jsonString String to write in JSON-format
      */
     public void writeJsonData(String jsonString) {
-        byte[] data = jsonString.getBytes();
+        byte[] data = jsonString.getBytes(StandardCharsets.UTF_8);
         this.writeBinaryData(data);
     }
 
@@ -111,6 +111,11 @@ public class RocketConnection implements AutoCloseable {
      */
     public JsonObject getResponseJSON() {
         try (InputStream is = getEffectiveInputStream()) {
+            if (is == null) {
+                JsonObject error = new JsonObject();
+                error.addProperty("error", "No response body available");
+                return error;
+            }
             byte[] data = is.readAllBytes();
             return JsonParser.parseString(new String(data, StandardCharsets.UTF_8)).getAsJsonObject();
         } catch (IOException e) {
