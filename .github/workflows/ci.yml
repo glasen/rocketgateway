@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+  schedule:
+    # Weekly run, so new vulnerabilities in unchanged code and dependencies show up too.
+    - cron: '23 4 * * 1'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Every job gets read-only access by default. Jobs which need more ask for it explicitly.
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test (JDK ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # 17 is the minimum the code is compiled for (--release 17), 25 is the current LTS.
+        java: [ 17, 21, 25 ]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: temurin
+
+      # Also validates the checksum of the Gradle wrapper.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      # Compiles with -Xlint:all -Werror and runs all tests (unit tests and end-to-end tests against a
+      # fake RocketChat server).
+      - name: Build and test
+        run: ./gradlew build --no-daemon
+
+      - name: Upload test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports-jdk${{ matrix.java }}
+          path: |
+            build/reports/tests/
+            build/test-results/
+          retention-days: 14
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Fails the pull request if it adds or changes a dependency with a known vulnerability.
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          languages: java-kotlin
+          build-mode: none
+          queries: security-extended
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          category: /language:java-kotlin
+
+  dependency-submission:
+    name: Submit dependency graph
+    # Only for trusted code on the main branch. The graph feeds Dependabot alerts.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - name: Generate and submit dependency graph
+        uses: gradle/actions/dependency-submission@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0

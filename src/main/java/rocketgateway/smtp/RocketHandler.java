@@ -1,14 +1,17 @@
 package rocketgateway.smtp;
 
 import org.subethamail.smtp.MessageHandler;
+import org.subethamail.smtp.RejectException;
 import rocketgateway.message.RocketEmlAddress;
 import rocketgateway.message.RocketEmlAttachment;
 import rocketgateway.message.RocketEmlMessage;
 import rocketgateway.rocketchat.Helpers;
 import rocketgateway.rocketchat.RocketChatAPI;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
 
 public class RocketHandler implements MessageHandler {
@@ -31,8 +34,19 @@ public class RocketHandler implements MessageHandler {
     }
 
     @Override
-    public String data(InputStream data) {
-        RocketEmlMessage rocketMessage = new RocketEmlMessage(data);
+    public String data(InputStream data) throws RejectException, IOException {
+        /* SubEthaSMTP only advertises the maximum size, it doesn't enforce it while the data is received.
+           Read at most one byte more than allowed so a huge mail can never fill the heap.
+        */
+        byte[] raw = data.readNBytes(RocketSMTPServer.MAX_MESSAGE_SIZE + 1);
+
+        if (raw.length > RocketSMTPServer.MAX_MESSAGE_SIZE) {
+            // Discard the rest, so the client receives the 552 reply instead of a reset connection.
+            data.transferTo(OutputStream.nullOutputStream());
+            throw new RejectException(552, "Message exceeds the maximum size");
+        }
+
+        RocketEmlMessage rocketMessage = new RocketEmlMessage(new ByteArrayInputStream(raw));
         rocketMessage.parseEML();
         String message = rocketMessage.makeMessage();
         List<RocketEmlAttachment> attachments = rocketMessage.getAttachments();

@@ -28,7 +28,7 @@ public class RocketEmlAttachment {
      * Remove everything that could end the value or the header line.
      */
     private static String sanitizeFilename(String filename) {
-        String clean = filename == null ? "" : filename.replaceAll("[\\p{Cntrl}\"\\\\/]", "_").strip();
+        String clean = filename == null ? "" : filename.strip().replaceAll("[\\p{Cntrl}\"\\\\/]", "_");
         return clean.isEmpty() ? "unknown.dat" : clean;
     }
 

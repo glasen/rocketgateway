@@ -9,7 +9,7 @@ import javax.net.ssl.SSLContext;
 
 
 public class RocketSMTPServer {
-    private static final int MAX_MESSAGE_SIZE = 25 * 1024 * 1024;
+    static final int MAX_MESSAGE_SIZE = 25 * 1024 * 1024;
     private static final int MAX_CONNECTIONS = 50;
     private static final int MAX_RECIPIENTS = 100;
     private static final int CONNECTION_TIMEOUT_MS = 60_000;
