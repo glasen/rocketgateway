@@ -3,21 +3,29 @@ package rocketgateway.rocketchat;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RocketChatAPI {
+    // Minimum time between two server-side user refreshes triggered by unknown addresses.
+    private static final long REFRESH_INTERVAL_MS = 30_000;
+    private static final int USERS_PAGE_SIZE = 100;
+
     private final LoginData loginData;
     private final String username;
     private final String serverURL;
     private boolean loginStatus;
-    private final Map<String, String> channelMap;
-    private final Map<String, String> eMailUserMap;
-    private String lastRoomId;
+
+    // Mappings from the config file (e-mail-address -> channel or user). They take precedence.
+    private volatile Map<String, String> configuredTargets;
+    // Mappings discovered on the server (e-mail-address -> "@username").
+    private final Map<String, String> discoveredTargets;
+    private final Set<String> knownUsernames;
+    private long lastRefresh;
 
     /**
      * Rudimentary RocketChat-API class. Contains only methods which are needed to send messages and attachments.
@@ -33,10 +41,11 @@ public class RocketChatAPI {
         this.loginStatus = false;
         this.serverURL = serverURL;
 
-        this.channelMap = new HashMap<>();
-        this.eMailUserMap = new HashMap<>(emailsChannels);
-
-        this.lastRoomId = "";
+        // These maps are shared between the SMTP threads and the config-watcher thread.
+        this.configuredTargets = normalizeConfig(emailsChannels);
+        this.discoveredTargets = new ConcurrentHashMap<>();
+        this.knownUsernames = ConcurrentHashMap.newKeySet();
+        this.lastRefresh = 0;
     }
 
     /**
@@ -63,12 +72,12 @@ public class RocketChatAPI {
     }
 
     /**
-     * Initializes connection by updating e-mail, room and user-data.
+     * Initializes connection by loading the users (and their e-mail-addresses) from the server.
      */
     public void init() {
         String userMessage = String.format("-> Messages will be sent by user \"%s\"", this.username);
         System.out.println(userMessage);
-        updateAll();
+        updateUsers();
     }
 
     /**
@@ -77,111 +86,121 @@ public class RocketChatAPI {
      * @param message String message to send
      * @param address String E-mail-address of the user to send the message.
      * @param alias   String sender alias name.
-     * @return boolean Returns true if the message was successfully sent.
+     * @return String Internal id of the room the message was sent to, or null if it could not be sent.
      */
-    public boolean sendMessageToEmailAddress(String message, String address, String alias) {
-        // Get channelName for the provided e-mail address. Only hit the server to refresh the
-        // mappings when the address is not yet known, instead of on every single message.
-        String channelName = this.eMailUserMap.get(address);
+    public String sendMessageToEmailAddress(String message, String address, String alias) {
+        String key = address.toLowerCase(Locale.ROOT);
+        String target = lookupTarget(key);
 
-        if (channelName == null) {
-            updateAll();
-            channelName = this.eMailUserMap.get(address);
+        // Only hit the server to refresh the user data when the address is not yet known.
+        if (target == null) {
+            refreshIfAllowed();
+            target = lookupTarget(key);
         }
 
-        if (channelName != null) {
-            return sendMessageToChannel(message, channelName, alias);
-        } else {
-            return false;
+        if (target == null) {
+            return null;
         }
+
+        return postMessage(message, target, alias);
     }
 
     /**
-     * Send a message to a specific channel. Basically all rooms are channels.
+     * Send a message to a specific channel (or user).
      *
      * @param message     String message to send
-     * @param channelName String Name of channel to send the message.
+     * @param channelName String Name of the channel. A leading "@" selects a user, "#" a channel.
      * @param alias       String sender alias name.
-     * @return boolean Returns true if the message was successfully sent.
+     * @return String Internal id of the room the message was sent to, or null if it could not be sent.
      */
-    public boolean sendMessageToChannel(String message, String channelName, String alias) {
-        boolean sendStatus = false;
-
-        /* Get room-id for channel name. All rooms and channels have a unique id. The room-id is the only
-           way to send a message by the same method to a user or a channel. Refresh the mappings from the
-           server only when the channel is not yet known.
-        */
-        String roomId = channelMap.get(channelName);
-
-        if (roomId == null) {
-            updateAll();
-            roomId = channelMap.get(channelName);
+    public String sendMessageToChannel(String message, String channelName, String alias) {
+        if (channelName == null || channelName.isBlank()) {
+            return null;
         }
 
+        return postMessage(message, toTarget(channelName.strip()), alias);
+    }
+
+    /**
+     * Post a message with chat.postMessage. The "channel" parameter accepts "#channelname" for channels and
+     * private groups and "@username" for direct messages, so no room-id lookups are needed. The server returns
+     * the room-id (message.rid) of the room which really received the message.
+     */
+    private String postMessage(String message, String target, String alias) {
         try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
             rocketConnection.open(HTTPMethods.POST, getApiPath("chat.postMessage"), null);
             rocketConnection.setAuthHeader(this.loginData);
 
             JsonObject jsonData = new JsonObject();
-
+            jsonData.addProperty("channel", target);
             jsonData.addProperty("text", message);
 
             if (!Helpers.safeString(alias).isEmpty()) {
                 jsonData.addProperty("alias", alias);
             }
 
-            if (roomId != null) {
-                jsonData.addProperty("roomId", roomId);
-            }
-
             rocketConnection.writeJsonData(jsonData.toString());
 
             JsonObject json = rocketConnection.getResponseJSON();
-            boolean status = rocketConnection.getStatus();
 
-            if (status) {
+            if (checkStatus(rocketConnection, json)) {
                 try {
-                    JsonObject messageObj = json.getAsJsonObject("message");
-                    lastRoomId = messageObj.get("rid").getAsString();
+                    // Keep the room-id local to this call. Concurrent messages must never share it.
+                    return json.getAsJsonObject("message").get("rid").getAsString();
                 } catch (Exception e) {
-                    lastRoomId = "";
+                    return null;
                 }
-            } else {
-                lastRoomId = "";
             }
 
-            if (status && json.get("success").getAsBoolean()) {
-                sendStatus = true;
-            }
-        } catch (Exception e) {
+            return null;
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        return sendStatus;
     }
 
     /**
-     * Upload a file to a specific room/channel
+     * Upload a file to a specific room with the two-step rooms.media/rooms.mediaConfirm flow. The old
+     * rooms.upload endpoint was removed in RocketChat 8.0.0.
      *
      * @param outData  byte[] Attachment data
      * @param boundary String Multipart boundary used to build outData
      * @param roomId   String Internal id of room to upload data
      */
     public void uploadFileToRoom(byte[] outData, String boundary, String roomId) {
-        try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            String apiPath = getApiPath("rooms.upload");
+        if (roomId == null || roomId.isEmpty()) {
+            return;
+        }
 
-            if (roomId != null) {
-                String fullApiPath = apiPath + "/" + roomId;
-                rocketConnection.open(HTTPMethods.POST, fullApiPath, boundary);
+        try {
+            String fileId;
+
+            try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
+                rocketConnection.open(HTTPMethods.POST, getApiPath("rooms.media") + "/" + roomId, boundary);
                 rocketConnection.setAuthHeader(this.loginData);
                 rocketConnection.writeBinaryData(outData);
-                this.lastRoomId = "";
+                JsonObject json = rocketConnection.getResponseJSON();
+
+                if (!checkStatus(rocketConnection, json)) {
+                    throw new IOException("rooms.media failed");
+                }
+
+                fileId = json.getAsJsonObject("file").get("_id").getAsString();
+            }
+
+            try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
+                rocketConnection.open(HTTPMethods.POST,
+                        getApiPath("rooms.mediaConfirm") + "/" + roomId + "/" + fileId, null);
+                rocketConnection.setAuthHeader(this.loginData);
+                rocketConnection.writeJsonData("{}");
+                JsonObject json = rocketConnection.getResponseJSON();
+
+                if (!checkStatus(rocketConnection, json)) {
+                    throw new IOException("rooms.mediaConfirm failed");
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
     }
 
     /**
@@ -234,126 +253,128 @@ public class RocketChatAPI {
     }
 
     /**
-     * Get id of the room the last message was sent.
-     *
-     * @return String Internal id of the room
-     */
-    public String getLastRoomId() {
-        return lastRoomId;
-    }
-
-    /**
-     * Updates e-mail-channel-map
+     * Updates the e-mail-address mappings from the config file.
      *
      * @param newEmailChannels Map with e-mail-address/channel-name
      */
     public void updateEmailChannels(Map<String, String> newEmailChannels) {
-        this.eMailUserMap.clear();
-        this.eMailUserMap.putAll(newEmailChannels);
-        updateAll();
+        this.configuredTargets = normalizeConfig(newEmailChannels);
+        updateUsers();
+    }
+
+    private static Map<String, String> normalizeConfig(Map<String, String> source) {
+        Map<String, String> result = new ConcurrentHashMap<>();
+
+        for (Map.Entry<String, String> entry : source.entrySet()) {
+            result.put(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue());
+        }
+
+        return result;
     }
 
     /**
-     * Updates channel, room and user information
+     * Looks up the target for an e-mail-address. Configured mappings win over discovered ones.
      */
-    private void updateAll() {
-        getChannels();
-        getRooms();
-        getUsers();
+    private String lookupTarget(String key) {
+        String configured = this.configuredTargets.get(key);
+
+        if (configured != null) {
+            return toTarget(configured.strip());
+        }
+
+        return this.discoveredTargets.get(key);
     }
 
     /**
-     * Get mappings of channel names to internal room-id.
+     * Converts a configured name into a value for the "channel" parameter. Names with a "#" or "@" prefix are
+     * used as they are. Known usernames become direct messages, everything else is a channel.
      */
-    public void getChannels() {
-        try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.GET, getApiPath("channels.list"), null);
-            rocketConnection.setAuthHeader(this.loginData);
-            JsonObject json = rocketConnection.getResponseJSON();
+    private String toTarget(String name) {
+        if (name.startsWith("#") || name.startsWith("@")) {
+            return name;
+        }
 
-            if (checkStatus(rocketConnection, json)) {
-                JsonArray channels = json.getAsJsonArray("channels");
-                for (JsonElement channel : channels) {
-                    if (channel.isJsonObject()) {
-                        String name = channel.getAsJsonObject().get("name").getAsString();
-                        String id = channel.getAsJsonObject().get("_id").getAsString();
-                        channelMap.put(name, id);
-                    }
-                }
+        return (this.knownUsernames.contains(name) ? "@" : "#") + name;
+    }
+
+    /**
+     * Refreshes the user data, but at most once per REFRESH_INTERVAL_MS. Unknown addresses are
+     * attacker-controlled input, so they must not be able to trigger unlimited server requests.
+     */
+    private synchronized void refreshIfAllowed() {
+        if (System.currentTimeMillis() - this.lastRefresh >= REFRESH_INTERVAL_MS) {
+            try {
+                updateUsers();
+            } catch (RuntimeException e) {
+                System.err.println("Couldn't refresh RocketChat data: " + e.getMessage());
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
 
     /**
-     * Get mappings of room names to internal room-id.
+     * Reads all users page by page (users.list) to learn the usernames and their e-mail-addresses. E-mail
+     * addresses are only returned if the bot-user has the permissions for it (e.g. the admin role).
      */
-    public void getRooms() {
-        try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.GET, getApiPath("rooms.get"), null);
-            rocketConnection.setAuthHeader(this.loginData);
-            JsonObject json = rocketConnection.getResponseJSON();
+    private synchronized void updateUsers() {
+        this.lastRefresh = System.currentTimeMillis();
+        int offset = 0;
 
-            if (checkStatus(rocketConnection, json)) {
-                JsonArray rooms = json.getAsJsonArray("update");
+        while (true) {
+            int received = 0;
+            int total;
 
-                for (JsonElement room : rooms) {
-                    if (room.isJsonObject()) {
-                        JsonElement nameObject = room.getAsJsonObject().get("name");
-                        JsonElement idObject = room.getAsJsonObject().get("_id");
+            try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
+                rocketConnection.open(HTTPMethods.GET,
+                        getApiPath("users.list") + "?count=" + USERS_PAGE_SIZE + "&offset=" + offset, null);
+                rocketConnection.setAuthHeader(this.loginData);
+                JsonObject json = rocketConnection.getResponseJSON();
 
-                        if (nameObject != null && idObject != null) {
-                            String name = nameObject.getAsString();
-                            String id = idObject.getAsString();
-                            channelMap.put(name, id);
-                        }
-                    }
+                if (!checkStatus(rocketConnection, json)) {
+                    return;
                 }
-            }
-        } catch (IOException ignore) {
-        }
-    }
 
-    /**
-     * Get mappings of e-mail-addresses to username
-     */
-    public void getUsers() {
-        try (RocketConnection rocketConnection = new RocketConnection(this.serverURL)) {
-            rocketConnection.open(HTTPMethods.GET, getApiPath("users.list"), null);
-            rocketConnection.setAuthHeader(this.loginData);
-            JsonObject json = rocketConnection.getResponseJSON();
-
-            if (checkStatus(rocketConnection, json)) {
                 JsonArray users = json.getAsJsonArray("users");
+                total = json.has("total") ? json.get("total").getAsInt() : 0;
 
                 for (JsonElement user : users) {
+                    received++;
+
                     if (user.isJsonObject()) {
-                        JsonObject userJson = user.getAsJsonObject();
-                        String username = Optional.ofNullable(userJson.get("username"))
-                                .orElse(new JsonPrimitive(""))
-                                .getAsString();
-
-                        if (username.isEmpty()) {
-                            continue;
-                        }
-
-                        String id = userJson.get("_id").getAsString();
-                        channelMap.put(username, id);
-
-                        JsonArray emails = Optional.ofNullable(userJson.getAsJsonArray("emails"))
-                                .orElse(new JsonArray());
-
-                        for (JsonElement email : emails) {
-                            if (email.isJsonObject()) {
-                                String address = email.getAsJsonObject().get("address").getAsString();
-                                eMailUserMap.put(address, username);
-                            }
-                        }
+                        readUser(user.getAsJsonObject());
                     }
                 }
+            } catch (IOException e) {
+                return;
             }
-        } catch (IOException ignore) {
+
+            // The server may cap "count", so continue with the number of users really received.
+            offset += received;
+
+            if (received == 0 || offset >= total) {
+                return;
+            }
+        }
+    }
+
+    private void readUser(JsonObject userJson) {
+        JsonElement usernameElement = userJson.get("username");
+
+        if (usernameElement == null || usernameElement.isJsonNull() || usernameElement.getAsString().isEmpty()) {
+            return;
+        }
+
+        String name = usernameElement.getAsString();
+        this.knownUsernames.add(name);
+
+        JsonElement emails = userJson.get("emails");
+
+        if (emails != null && emails.isJsonArray()) {
+            for (JsonElement email : emails.getAsJsonArray()) {
+                if (email.isJsonObject() && email.getAsJsonObject().has("address")) {
+                    String address = email.getAsJsonObject().get("address").getAsString();
+                    this.discoveredTargets.put(address.toLowerCase(Locale.ROOT), "@" + name);
+                }
+            }
         }
     }
 
@@ -367,12 +388,12 @@ public class RocketChatAPI {
         return "/api/v1/" + endPoint;
     }
 
-    private boolean checkStatus(RocketConnection rocketConnection, JsonObject jsonObject)  {
+    private boolean checkStatus(RocketConnection rocketConnection, JsonObject jsonObject) {
         boolean status = rocketConnection.getStatus();
         JsonElement success = jsonObject.get("success");
 
         if (success != null) {
-               return status && success.getAsBoolean();
+            return status && success.getAsBoolean();
         }
 
         return false;

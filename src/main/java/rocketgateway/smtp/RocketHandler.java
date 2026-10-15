@@ -4,6 +4,7 @@ import org.subethamail.smtp.MessageHandler;
 import rocketgateway.message.RocketEmlAddress;
 import rocketgateway.message.RocketEmlAttachment;
 import rocketgateway.message.RocketEmlMessage;
+import rocketgateway.rocketchat.Helpers;
 import rocketgateway.rocketchat.RocketChatAPI;
 
 import java.io.IOException;
@@ -36,32 +37,39 @@ public class RocketHandler implements MessageHandler {
         String message = rocketMessage.makeMessage();
         List<RocketEmlAttachment> attachments = rocketMessage.getAttachments();
 
+        String alias = Helpers.escapeMentions(rocketMessage.getSender());
+
         for (RocketEmlAddress recipient : rocketMessage.getRecipients()) {
             String address = recipient.address();
-            String alias = rocketMessage.getSender();
 
-            boolean status = this.bot.sendMessageToEmailAddress(message, address, alias);
+            // The room-id is returned per message, so concurrent mails can never mix up their rooms.
+            String roomId = this.bot.sendMessageToEmailAddress(message, address, alias);
 
-            if (status) {
-                String roomId = bot.getLastRoomId();
+            if (roomId != null) {
+                if (!attachments.isEmpty()) {
+                    boolean uploadFailed = false;
 
-                if (!roomId.isEmpty()) {
                     for (RocketEmlAttachment attachment : attachments) {
                         try {
                             String boundary = RocketEmlAttachment.newBoundary();
                             byte[] attachmentData = attachment.getUploadData(boundary);
                             this.bot.uploadFileToRoom(attachmentData, boundary, roomId);
-                        } catch (IOException e) {
-                            this.bot.sendMessageToEmailAddress("_Couldn't upload attachments!_", address, null);
+                        } catch (IOException | RuntimeException e) {
+                            uploadFailed = true;
                         }
                     }
-                } else {
-                    this.bot.sendMessageToEmailAddress("_Couldn't upload attachments!_", address, null);
+
+                    if (uploadFailed) {
+                        this.bot.sendMessageToEmailAddress("_Couldn't upload attachments!_", address, null);
+                    }
                 }
-            } else {
-                if (this.getSpam) {
-                    this.bot.sendMessageToChannel(message, this.spamChannel, alias);
+
+                if (rocketMessage.getSkippedAttachments() > 0) {
+                    this.bot.sendMessageToEmailAddress(String.format("_%d attachment(s) skipped (too many or too large)._",
+                            rocketMessage.getSkippedAttachments()), address, null);
                 }
+            } else if (this.getSpam && this.spamChannel != null) {
+                this.bot.sendMessageToChannel(message, this.spamChannel, alias);
             }
         }
 

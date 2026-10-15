@@ -9,6 +9,10 @@ import javax.net.ssl.SSLContext;
 
 
 public class RocketSMTPServer {
+    private static final int MAX_MESSAGE_SIZE = 25 * 1024 * 1024;
+    private static final int MAX_CONNECTIONS = 50;
+    private static final int MAX_RECIPIENTS = 100;
+    private static final int CONNECTION_TIMEOUT_MS = 60_000;
     private final int smtpPort;
     private final SMTPServer smtpServer;
     private final boolean getSpam;
@@ -27,21 +31,35 @@ public class RocketSMTPServer {
 
         RocketMessageHandler messageFactory = new RocketMessageHandler(bot, getSpam, spamChannel) ;
         RocketPasswordValidator validator = new RocketPasswordValidator(smtpConfig.smtpUsername(), smtpConfig.smtpPassword());
-        AuthenticationHandlerFactory authHandlerFactory = new EasyAuthenticationHandlerFactory(validator);
 
+        // Limits protect the gateway against oversized mails and connection floods.
         SMTPServer.Builder smtpServerBuilder = SMTPServer
                 .port(this.smtpPort)
-                .requireAuth(requireAuth)
-                .authenticationHandlerFactory(authHandlerFactory)
-                .messageHandlerFactory(messageFactory);
+                .messageHandlerFactory(messageFactory)
+                .maxMessageSize(MAX_MESSAGE_SIZE)
+                .maxConnections(MAX_CONNECTIONS)
+                .maxRecipients(MAX_RECIPIENTS)
+                .connectionTimeoutMs(CONNECTION_TIMEOUT_MS);
+
+        // Only offer AUTH when it is required. Otherwise nobody needs to send credentials at all.
+        if (requireAuth) {
+            AuthenticationHandlerFactory authHandlerFactory = new EasyAuthenticationHandlerFactory(validator);
+            smtpServerBuilder.requireAuth(true).authenticationHandlerFactory(authHandlerFactory);
+        }
 
         try {
             if (enableTLS) {
                 SSLContext sslContext = SSLLoader.getSslContext();
                 smtpServerBuilder.enableTLS().
                         startTlsSocketFactory(sslContext);
+
+                // Never accept credentials in cleartext: STARTTLS must come before AUTH.
+                if (requireAuth) {
+                    smtpServerBuilder.requireTLS();
+                }
             }
         } catch (Exception e) {
+            System.err.println("TLS initialization failed: " + e.getMessage());
             this.brokenTLS = true;
         }
 
@@ -70,6 +88,8 @@ public class RocketSMTPServer {
 
         if (this.requireAuth) {
             statusMessage += "-> SMTP-authentication is enabled\n";
+        } else {
+            statusMessage += "-> WARNING: SMTP-authentication is disabled. Anyone who can reach the port can post messages!\n";
         }
 
         if (this.enableTLS) {

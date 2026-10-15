@@ -18,9 +18,27 @@ public class RocketEmlAttachment {
      * @param content Byte array with the binary data of the attachment
      */
     public RocketEmlAttachment(String filename, String mimeType, byte[] content) {
-        this.filename = filename;
-        this.mimeType = mimeType;
-        this.content = content; }
+        this.filename = sanitizeFilename(filename);
+        this.mimeType = sanitizeMimeType(mimeType);
+        this.content = content;
+    }
+
+    /**
+     * The filename comes from the (untrusted) e-mail and is placed inside a quoted multipart header value.
+     * Remove everything that could end the value or the header line.
+     */
+    private static String sanitizeFilename(String filename) {
+        String clean = filename == null ? "" : filename.replaceAll("[\\p{Cntrl}\"\\\\/]", "_").strip();
+        return clean.isEmpty() ? "unknown.dat" : clean;
+    }
+
+    /**
+     * Only accept a plain "type/subtype" media type. Parameters such as "; name=..." are dropped.
+     */
+    private static String sanitizeMimeType(String mimeType) {
+        String type = mimeType == null ? "" : mimeType.split(";", 2)[0].strip();
+        return type.matches("[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+-]+") ? type : "application/octet-stream";
+    }
 
     /**
      * Generates a unique multipart boundary for a single upload. Using a fresh random boundary per

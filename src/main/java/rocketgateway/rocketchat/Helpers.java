@@ -14,6 +14,14 @@ public abstract class Helpers {
         return Optional.ofNullable(value). orElse(returnValue);
     }
 
+    /**
+     * Neutralizes RocketChat mentions (@all, @here, @user) in untrusted text by inserting a zero-width
+     * space after every "@". The text still reads the same but no longer notifies anybody.
+     */
+    public static String escapeMentions(String value) {
+        return safeString(value).replace("@", "@\u200B");
+    }
+
     public static Session getSession() {
         // Create dummy smtp-server entries. MimeMessage needs them.
         Properties props = new Properties();
