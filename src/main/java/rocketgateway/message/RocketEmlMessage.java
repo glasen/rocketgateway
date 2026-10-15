@@ -13,10 +13,13 @@ import java.io.InputStream;
 import java.util.*;
 
 public class RocketEmlMessage {
+    private static final int MAX_ATTACHMENTS = 10;
+    private static final int MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
     private final InputStream data;
     private final Set<RocketEmlAddress> recipients;
     private final List<RocketEmlAttachment> attachments;
     private final CopyDown converter;
+    private int skippedAttachments;
     private String date;
     private String sender;
     private String subject;
@@ -83,11 +86,19 @@ public class RocketEmlMessage {
         String filename = Helpers.safeString(attachment.getName(), "unknown.dat");
         String mimeType = Helpers.safeString(attachment.getContentType(), "application/octet-stream");
 
-        try (InputStream stream = attachment.getInputStream()) {
-            byte[] content = stream.readAllBytes();
+        if (this.attachments.size() >= MAX_ATTACHMENTS) {
+            this.skippedAttachments++;
+            return;
+        }
 
-            // Only add those attachments which have some content.
-            if (content.length > 0) {
+        try (InputStream stream = attachment.getInputStream()) {
+            // Read at most one byte more than allowed, so oversized attachments never fill the heap.
+            byte[] content = stream.readNBytes(MAX_ATTACHMENT_BYTES + 1);
+
+            if (content.length > MAX_ATTACHMENT_BYTES) {
+                this.skippedAttachments++;
+            } else if (content.length > 0) {
+                // Only add those attachments which have some content.
                 this.attachments.add(new RocketEmlAttachment(filename, mimeType, content));
             }
         }
@@ -139,7 +150,17 @@ public class RocketEmlMessage {
      */
     public String makeMessage() {
         String messageTemplate = "*Date:* %s\n*Subject:* %s\n\n%s";
-        return String.format(messageTemplate, this.date, this.subject, this.body);
+        return String.format(messageTemplate, this.date,
+                Helpers.escapeMentions(this.subject), Helpers.escapeMentions(this.body));
+    }
+
+    /**
+     * Get the number of attachments which were not taken over because they were too many or too large.
+     *
+     * @return int Number of skipped attachments
+     */
+    public int getSkippedAttachments() {
+        return skippedAttachments;
     }
 
     /**

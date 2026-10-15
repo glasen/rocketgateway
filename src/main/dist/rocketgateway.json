@@ -1,9 +1,9 @@
 {
   "smtp": {
     "smtp_port": 1500,
-    "require_auth": false,
-    "smtp_username": "test",
-    "smtp_password": "test"
+    "require_auth": true,
+    "smtp_username": "change-me",
+    "smtp_password": "change-me-too"
   },
   "rocketchat": {
     "rocketchat_url": "http://localhost:3000",

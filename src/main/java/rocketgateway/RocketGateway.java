@@ -31,6 +31,10 @@ public class RocketGateway {
             System.exit(1);
         }
         
+        for (String warning : configFileParser.getWarnings()) {
+            System.err.println("WARNING: " + warning);
+        }
+
         int smtpPort = configFileParser.getPort();
         String rocketChatURL = configFileParser.getRocketChatURL();
 
@@ -133,8 +137,13 @@ public class RocketGateway {
                         }
                     }
 
-                    if (configChanged && !configFileParser.parse()) {
-                        bot.updateEmailChannels(configFileParser.getEmailChannels());
+                    if (configChanged) {
+                        if (configFileParser.parse()) {
+                            System.err.println("Config reload failed, keeping old mappings: "
+                                    + configFileParser.getErrorMessage());
+                        } else {
+                            bot.updateEmailChannels(configFileParser.getEmailChannels());
+                        }
                     }
 
                     if (!key.reset()) {
@@ -143,7 +152,8 @@ public class RocketGateway {
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                System.err.println("Config watcher stopped: " + e);
             }
         }, "config-watcher");
 
